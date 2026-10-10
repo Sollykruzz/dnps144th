@@ -164,6 +164,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
   // Receipt & Payment Agreement
   const [receiptNo, setReceiptNo] = useState<string>('');
   const [hasAgreedPayment, setHasAgreedPayment] = useState<boolean>(false);
+  const [admissionFeeEnabled, setAdmissionFeeEnabled] = useState<boolean>(true);
   const [examFeeEnabled, setExamFeeEnabled] = useState<boolean>(true);
   const [schoolFeeEnabled, setSchoolFeeEnabled] = useState<boolean>(true);
   const [lessonFeeEnabled, setLessonFeeEnabled] = useState<boolean>(true);
@@ -193,6 +194,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
   const numLessonPaid = Math.max(0, Number(lessonPaid) || 0);
 
   // Effective values respect the enabled checkboxes — unchecked fees contribute 0
+  const effectiveAdmissionPaid = admissionFeeEnabled ? numAdmissionPaid : 0;
   const effectiveExamFee = examFeeEnabled ? numExamFee : 0;
   const effectiveExamPaid = examFeeEnabled ? numExamPaid : 0;
   const effectiveSchoolFee = schoolFeeEnabled ? numSchoolFee : 0;
@@ -202,7 +204,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
 
   // Grand Total Fee Calculation
   const grandTotalFee = effectiveSchoolFee + numAdmissionFee + effectiveExamFee + effectiveLessonFee;
-  const grandTotalPaid = effectiveSchoolPaid + numAdmissionPaid + effectiveExamPaid + effectiveLessonPaid;
+  const grandTotalPaid = effectiveSchoolPaid + effectiveAdmissionPaid + effectiveExamPaid + effectiveLessonPaid;
   const grandTotalBalance = Math.max(0, grandTotalFee - grandTotalPaid);
 
   const resetForm = () => {
@@ -223,6 +225,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
     setHasAgreedPayment(false);
     setErrorMessage(null);
     setEnrolledStudent(null);
+    setAdmissionFeeEnabled(true);
     setExamFeeEnabled(true);
     setSchoolFeeEnabled(true);
     setLessonFeeEnabled(true);
@@ -244,7 +247,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
   };
 
   const handleQuickPayAll = () => {
-    setAdmissionPaid(String(numAdmissionFee));
+    if (admissionFeeEnabled) setAdmissionPaid(String(numAdmissionFee));
     if (examFeeEnabled) setExamPaid(String(numExamFee));
     if (schoolFeeEnabled) setSchoolPaid(String(numSchoolFee));
     if (lessonFeeEnabled) setLessonPaid(String(numLessonFee));
@@ -270,7 +273,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
       return;
     }
 
-    if (numAdmissionPaid > numAdmissionFee) {
+    if (admissionFeeEnabled && numAdmissionPaid > numAdmissionFee) {
       setErrorMessage(`Overpayment blocked: Admission Paid (${formatCurrency(numAdmissionPaid, currencySymbol)}) cannot exceed Admission Fee (${formatCurrency(numAdmissionFee, currencySymbol)}).`);
       return;
     }
@@ -324,8 +327,8 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
         tuition_status: schoolStatus,
 
         admission_fee: numAdmissionFee,
-        admission_paid: numAdmissionPaid,
-        admission_status: numAdmissionPaid >= numAdmissionFee ? 'fully_paid' : numAdmissionPaid > 0 ? 'part_payment' : 'unpaid',
+        admission_paid: effectiveAdmissionPaid,
+        admission_status: effectiveAdmissionPaid >= numAdmissionFee ? 'fully_paid' : effectiveAdmissionPaid > 0 ? 'part_payment' : 'unpaid',
         is_new_admission: true,
 
         lesson_fee: effectiveLessonFee,
@@ -589,19 +592,18 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
           {/* Admission Fee Row (mandatory) */}
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40">
             <div className="flex items-center gap-3 p-3.5">
-              <input type="checkbox" checked disabled className="w-5 h-5 rounded-md border-slate-300 text-emerald-600 shrink-0 opacity-70" />
+              <input type="checkbox" checked={admissionFeeEnabled} onChange={(e) => setAdmissionFeeEnabled(e.target.checked)} className="w-5 h-5 rounded-md border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0" />
               <button
                 type="button"
-                onClick={() => setExpandedFeeCard(expandedFeeCard === 'admission' ? null : 'admission')}
-                className="flex-1 flex items-center justify-between min-w-0 text-left"
+                onClick={() => admissionFeeEnabled && setExpandedFeeCard(expandedFeeCard === 'admission' ? null : 'admission')}
+                disabled={!admissionFeeEnabled}
+                className="flex-1 flex items-center justify-between min-w-0 text-left disabled:opacity-50"
               >
-                <span className="text-xs font-black text-slate-900">
-                  Admission Fee <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full ml-1">Required</span>
-                </span>
-                <span className="text-[11px] font-bold text-slate-600 shrink-0">{formatCurrency(numAdmissionFee, currencySymbol)}</span>
+                <span className="text-xs font-black text-slate-900">Admission Fee</span>
+                <span className="text-[11px] font-bold text-slate-600 shrink-0">{admissionFeeEnabled ? formatCurrency(numAdmissionFee, currencySymbol) : `Pending – Owing ${formatCurrency(numAdmissionFee, currencySymbol)}`}</span>
               </button>
             </div>
-            {expandedFeeCard === 'admission' && (
+            {admissionFeeEnabled && expandedFeeCard === 'admission' && (
               <div className="px-3.5 pb-3.5 grid grid-cols-2 gap-3 animate-in fade-in duration-150">
                 <div>
                   <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Fee ({currencySymbol})</span>
