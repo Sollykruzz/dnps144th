@@ -1,0 +1,224 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for security validation and access control
+    function isSafeId(id) {
+      return id is string && id.size() > 0 && id.size() <= 256;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validator: School Profile
+    function isValidSchool(data) {
+      return data.keys().hasAll(['id', 'name']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 300 &&
+        (!('currencySymbol' in data) || (data.currencySymbol is string && data.currencySymbol.size() <= 10)) &&
+        (!('type' in data) || data.type is string) &&
+        (!('classes' in data) || data.classes is list) &&
+        (!('feeSchedule' in data) || data.feeSchedule is map) &&
+        (!('classFeeSchedules' in data) || data.classFeeSchedules is map) &&
+        (!('additionalFees' in data) || data.additionalFees is list) &&
+        (!('createdAt' in data) || data.createdAt is string) &&
+        (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
+    // Entity validator: Student Payment Record
+    function isValidStudent(data) {
+      return data.keys().hasAll(['id', 'full_name', 'class', 'fee_amount']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.full_name is string && data.full_name.size() > 0 && data.full_name.size() <= 300 &&
+        data.class is string && data.class.size() > 0 && data.class.size() <= 100 &&
+        data.fee_amount is number && data.fee_amount >= 0 &&
+        (!('amount_paid' in data) || data.amount_paid is number) &&
+        (!('balance' in data) || data.balance is number) &&
+        (!('status' in data) || data.status is string) &&
+        (!('payment_date' in data) || data.payment_date is string) &&
+        (!('term' in data) || data.term is string) &&
+        (!('session' in data) || data.session is string) &&
+        (!('admission_fee' in data) || data.admission_fee is number) &&
+        (!('admission_paid' in data) || data.admission_paid is number) &&
+        (!('admission_status' in data) || data.admission_status is string) &&
+        (!('is_new_admission' in data) || data.is_new_admission is bool) &&
+        (!('tuition_fee' in data) || data.tuition_fee is number) &&
+        (!('tuition_paid' in data) || data.tuition_paid is number) &&
+        (!('tuition_status' in data) || data.tuition_status is string) &&
+        (!('is_exempt_from_school_fee' in data) || data.is_exempt_from_school_fee is bool) &&
+        (!('scholarship_notes' in data) || data.scholarship_notes is string) &&
+        (!('lesson_fee' in data) || data.lesson_fee is number) &&
+        (!('lesson_paid' in data) || data.lesson_paid is number) &&
+        (!('lesson_status' in data) || data.lesson_status is string) &&
+        (!('lesson_months' in data) || data.lesson_months is string) &&
+        (!('lesson_disabled' in data) || data.lesson_disabled is bool) &&
+        (!('exam_fee' in data) || data.exam_fee is number) &&
+        (!('exam_paid' in data) || data.exam_paid is number) &&
+        (!('exam_status' in data) || data.exam_status is string) &&
+        (!('additional_fees' in data) || data.additional_fees is list) &&
+        (!('receipt_no' in data) || data.receipt_no is string) &&
+        (!('total_remitted' in data) || data.total_remitted is number) &&
+        (!('syncedToCloudAt' in data) || data.syncedToCloudAt is string) &&
+        (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
+    // Entity validator: Scholarship Record
+    function isValidScholarship(data) {
+      return data.keys().hasAll(['id']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        (!('student_name' in data) || data.student_name is string) &&
+        (!('studentName' in data) || data.studentName is string) &&
+        (!('class' in data) || data.class is string) &&
+        (!('studentClass' in data) || data.studentClass is string) &&
+        (!('term' in data) || data.term is string) &&
+        (!('session' in data) || data.session is string) &&
+        (!('exempt_school_fee' in data) || data.exempt_school_fee is bool) &&
+        (!('scholarship_percentage' in data) || data.scholarship_percentage is number) &&
+        (!('discountPercentage' in data) || data.discountPercentage is number);
+    }
+
+    // Entity validator: School Expense
+    function isValidExpense(data) {
+      return data.keys().hasAll(['id', 'amount', 'category']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.amount is number && data.amount >= 0 &&
+        data.category is string && data.category.size() > 0 &&
+        (!('description' in data) || data.description is string) &&
+        (!('date' in data) || data.date is string);
+    }
+
+    // Entity validator: Staff Member
+    function isValidStaff(data) {
+      return data.keys().hasAll(['id', 'fullName', 'baseSalary', 'department']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.fullName is string && data.fullName.size() > 0 &&
+        data.baseSalary is number && data.baseSalary >= 0 &&
+        data.department is string && data.department.size() > 0;
+    }
+
+    // Entity validator: Payroll Record
+    function isValidPayroll(data) {
+      return data.keys().hasAll(['id', 'staffId', 'month', 'netPay']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.staffId is string && data.staffId.size() > 0 &&
+        data.month is string && data.month.size() > 0 &&
+        data.netPay is number && data.netPay >= 0;
+    }
+
+    // Entity validator: Remittance Record
+    function isValidRemittance(data) {
+      return data.keys().hasAll(['id', 'amount', 'date']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 256 &&
+        data.amount is number && data.amount >= 0 &&
+        data.date is string && data.date.size() > 0;
+    }
+
+    // Entity validator: Branding Configuration
+    function isValidBranding(data) {
+      return data.keys().hasAll(['appName', 'primaryColor']) &&
+        data.appName is string && data.appName.size() > 0 &&
+        data.primaryColor is string && data.primaryColor.size() > 0;
+    }
+
+    // Connectivity test collection for latency ping (read-only)
+    match /test/{testId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Master School Isolation Boundary & all its subcollections
+    match /schools/{schoolId} {
+      allow get, list: if true;
+      allow write: if isSafeId(schoolId);
+
+      // 1. Students subcollection
+      match /students/{studentId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(studentId);
+      }
+
+      // 2. Scholarships subcollection
+      match /scholarships/{scholarshipId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(scholarshipId);
+      }
+
+      // 3. Operational Expenses subcollection
+      match /expenses/{expenseId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(expenseId);
+      }
+
+      // 3b. Extra Incomes subcollection
+      match /extra_incomes/{incomeId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(incomeId);
+      }
+
+      // 4. Staff Roster subcollection
+      match /staff/{staffId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(staffId);
+      }
+
+      // 5. Monthly Staff Payroll subcollection
+      match /payroll/{payrollId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(payrollId);
+      }
+
+      // 6. Audit Trail Logs (Append-only: immutable logs)
+      match /audit_logs/{logId} {
+        allow read, create: if isSafeId(schoolId) && isSafeId(logId);
+        allow update, delete: if false;
+      }
+
+      match /auditLogs/{logId} {
+        allow read, create: if isSafeId(schoolId) && isSafeId(logId);
+        allow update, delete: if false;
+      }
+
+      // 7. Academic Term Schedules & Calendars
+      match /term_schedules/{scheduleId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(scheduleId);
+      }
+
+      // 8. Bursar Remittances
+      match /remittances/{remittanceId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(remittanceId);
+      }
+
+      // 9. System Users and Staff Role Accounts
+      match /system_users/{userId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(userId);
+      }
+
+      // 10. School Branding Configuration
+      match /branding/{brandingId} {
+        allow read: if true;
+        allow write: if isSafeId(schoolId) && isSafeId(brandingId);
+      }
+
+      // 11. Term Backups and Snapshots
+      match /backups/{backupId} {
+        allow read: if true;
+        allow write, delete: if isSafeId(schoolId) && isSafeId(backupId);
+      }
+
+      // Catch-all for any other nested subcollections under a school
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isSafeId(schoolId);
+      }
+    }
+  }
+}

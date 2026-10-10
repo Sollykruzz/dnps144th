@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Fast hardware-accelerated touch momentum scrolling */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Print specific styles for payment receipts and financial reports */
+@media print {
+  /* Suppress all screen-only UI */
+  .no-print,
+  nav,
+  header,
+  aside {
+    display: none !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Target printable elements isolation */
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-receipt,
+  #printable-receipt *,
+  #printable-financial-report,
+  #printable-financial-report *,
+  #printable-audit-report,
+  #printable-audit-report * {
+    visibility: visible;
+  }
+
+  #printable-financial-report,
+  #printable-audit-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 16px 24px;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    display: block !important;
+  }
+
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white;
+    color: black;
+    display: block !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 12mm 10mm;
+  }
+
+  /* Prevent awkward page breaks inside tables and financial cards */
+  .print-avoid-break,
+  tr,
+  .print-row {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+}
+
+/* ==========================================================================
+   Mobile friendliness
+   (kept out of the Tailwind layers on purpose, so keep these rules narrow)
+   ========================================================================== */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Follow the visible screen height (browser toolbars show and hide on phones) */
+#root {
+  height: 100dvh;
+}
+
+/* A stray wide element must never create sideways page scrolling */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* No 300ms tap delay or accidental double-tap zoom on controls */
+button, a, [role="button"], select, summary, label[for] {
+  touch-action: manipulation;
+}
+
+@media (max-width: 639px) {
+  /*
+   * Popups: the dark backdrop itself scrolls, so a tall card can never push its
+   * buttons off the screen. Auto margins keep short cards centred and stop the top of
+   * a tall card being cut off (which centred layouts do when the card is taller than the screen).
+   */
+  .fixed.inset-0 {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fixed.inset-0.items-center {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .fixed.inset-0.items-center > * {
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "dnps ac sys — School Accounting & Fee Management",
+  "description": "Dominion Nursery & Primary School Accounting & School Fee Management System",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
