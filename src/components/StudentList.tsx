@@ -346,62 +346,67 @@ export const StudentList: React.FC<StudentListProps> = ({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-      {/* 1. Quick Operations Ribbon */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 pb-28 pt-4 sm:px-6 sm:pt-5 lg:px-8">
+      {/* 1. Quick Operations */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center" aria-label="Quick actions">
         <button
+          type="button"
           onClick={onOpenAddStudent}
           id="quick-enroll-student-btn"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#0f172a] hover:bg-black text-white text-xs font-bold shadow-xs active:scale-95 transition-all shrink-0 cursor-pointer"
+          className="col-span-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 active:scale-[0.99] sm:col-span-1 sm:w-auto sm:justify-start sm:px-4 sm:py-2.5 sm:text-xs"
         >
-          <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Enroll Student</span>
+          <UserPlus className="size-4 text-emerald-400" aria-hidden="true" />
+          <span>Enroll student</span>
         </button>
 
         {onOpenSheetUpload && (
           <button
+            type="button"
             onClick={onOpenSheetUpload}
             id="quick-sheet-upload-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-2.5 py-2.5 text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 sm:w-auto sm:px-3.5"
           >
-            <Layers className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Upload via Sheet / CSV</span>
+            <Layers className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
+            <span className="truncate">Upload spreadsheet</span>
           </button>
         )}
 
         {onOpenBackup && (
           <button
+            type="button"
             onClick={onOpenBackup}
             id="quick-sheet-backup-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl border border-blue-200 bg-blue-50 px-2.5 py-2.5 text-xs font-bold text-blue-900 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:w-auto sm:px-3.5"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Backup / Export</span>
+            <ShieldCheck className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
+            <span className="truncate">Backup / export</span>
           </button>
         )}
 
         {onOpenScholarships && (
           <button
+            type="button"
             onClick={onOpenScholarships}
             id="quick-scholarships-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 px-2.5 py-2.5 text-xs font-bold text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:w-auto sm:px-3.5"
           >
-            <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
-            <span>Scholarships ({scholarshipCount})</span>
+            <GraduationCap className="size-4 shrink-0 text-amber-700" aria-hidden="true" />
+            <span className="truncate">Scholarships ({scholarshipCount})</span>
           </button>
         )}
 
         {onOpenAdditionalFees && (
           <button
+            type="button"
             onClick={onOpenAdditionalFees}
             id="quick-additional-fees-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="inline-flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl border border-violet-200 bg-violet-50 px-2.5 py-2.5 text-xs font-bold text-violet-950 transition-colors hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 sm:w-auto sm:px-3.5"
           >
-            <Layers className="w-3.5 h-3.5 text-purple-600" />
-            <span>Manage Fees</span>
+            <Layers className="size-4 shrink-0 text-violet-700" aria-hidden="true" />
+            <span className="truncate">Manage fees</span>
             {activeAdditionalFees.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-purple-200 text-purple-900 text-[10px] font-black">
-                {activeAdditionalFees.length} Active
+              <span className="shrink-0 rounded-full bg-violet-200 px-1.5 py-0.5 text-[10px] font-bold text-violet-950">
+                {activeAdditionalFees.length} active
               </span>
             )}
           </button>
