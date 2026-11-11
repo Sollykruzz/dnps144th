@@ -82,6 +82,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   });
 
   const [visibleCount, setVisibleCount] = useState<number>(30);
+  const [showOtherFees, setShowOtherFees] = useState(false);
 
   // Effective fee schedule resolver context
   const effectiveSchedule = activeSchool || feeSchedule;
@@ -345,7 +346,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   };
 
   return (
-    <div className="flex-1 pb-28 px-5 pt-4 space-y-4">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:px-8">
       {/* 1. Quick Operations Ribbon */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <button
@@ -609,20 +610,20 @@ export const StudentList: React.FC<StudentListProps> = ({
       {students.length > 0 && (
         <div 
           id="students-collection-summary-card"
-          className="p-5 bg-gradient-to-br from-[#1e3a8a] via-[#1d4ed8] to-[#1e40af] rounded-[28px] text-white shadow-xl shadow-blue-500/15 space-y-4 border border-blue-400/20"
+          className="overflow-hidden rounded-[26px] border border-slate-700 bg-slate-900 p-5 text-white shadow-lg shadow-slate-950/10 sm:p-7"
         >
           {/* Top Section: Overall Total Collection (Tuition + Admission + Lesson + Exam) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-1.5 text-blue-200">
-                <Wallet className="w-4 h-4 text-blue-300" />
-                <p className="text-[11px] uppercase font-black tracking-wider">
-                  Total Fees Collection Dashboard
-                </p>
-              </div>
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Wallet className="w-4 h-4 text-teal-700" />
+                    <p className="text-[11px] uppercase font-bold tracking-[0.14em]">
+                      School &amp; exam fee collection
+                    </p>
+                  </div>
               <div className="flex items-baseline gap-2 mt-1">
                 <h3 className="text-2xl sm:text-3xl font-black tracking-tight font-mono text-white">
-                  {formatCurrency(metrics.overallCollected, currencySymbol)}
+                  {formatCurrency(metrics.schoolFeeCollected + metrics.examFeeCollected, currencySymbol)}
                 </h3>
                 <span className="text-xs text-blue-200/90 font-medium">
                   collected
@@ -637,10 +638,10 @@ export const StudentList: React.FC<StudentListProps> = ({
                   </span>
                 </span>
                 <span>
-                  Target: <span className="font-bold text-white font-mono">{formatCurrency(metrics.overallExpected, currencySymbol)}</span> ({metrics.count} students)
+                  Target: <span className="font-bold text-white font-mono">{formatCurrency(metrics.schoolFeeExpected + metrics.examFeeExpected, currencySymbol)}</span> ({metrics.count} students)
                 </span>
                 <span className="text-amber-300 font-semibold font-mono">
-                  Due: <span>{formatCurrency(metrics.overallBalance, currencySymbol)}</span>
+                  Due: <span>{formatCurrency(metrics.schoolFeeBalance + metrics.examFeeBalance, currencySymbol)}</span>
                 </span>
               </div>
             </div>
@@ -650,31 +651,31 @@ export const StudentList: React.FC<StudentListProps> = ({
                 Total Balance Due
               </span>
               <span className="text-lg sm:text-xl font-black text-amber-300 font-mono">
-                {formatCurrency(metrics.overallBalance, currencySymbol)}
+                {formatCurrency(metrics.schoolFeeBalance + metrics.examFeeBalance, currencySymbol)}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-200 font-bold border border-blue-400/30">
-                {metrics.overallRate.toFixed(1)}% Collected
+                {(metrics.schoolFeeExpected + metrics.examFeeExpected > 0 ? ((metrics.schoolFeeCollected + metrics.examFeeCollected) / (metrics.schoolFeeExpected + metrics.examFeeExpected)) * 100 : 0).toFixed(1)}% Collected
               </span>
             </div>
           </div>
 
           {/* Overall Progress Bar */}
-          <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-cyan-400 to-emerald-400 h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, metrics.overallRate))}%` }}
+          <div className="h-2 w-full overflow-hidden rounded-full bg-black/20">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(0, (metrics.schoolFeeExpected + metrics.examFeeExpected) > 0 ? ((metrics.schoolFeeCollected + metrics.examFeeCollected) / (metrics.schoolFeeExpected + metrics.examFeeExpected)) * 100 : 0))}%` }}
             />
           </div>
 
-          {/* Bottom Grid: 5 Dedicated Fee Collection Cards (School Fee, Exam Fee, Lesson Fee, Admission Fee, Additional/PTA Fees) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+          {/* Keep the two most-used categories visible; reveal the rest on demand. */}
+          <div className={`grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-2 ${showOtherFees ? '' : '[&>*:nth-child(n+3)]:hidden'}`}>
             {/* 1. School Fee (Tuition) */}
             <div className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3 flex flex-col justify-between border border-white/15">
               <div className="flex items-center justify-between gap-1 text-blue-200 mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <GraduationCap className="w-3.5 h-3.5 text-blue-300 shrink-0" />
                   <span className="text-[10px] font-black uppercase tracking-wider truncate">
-                    Tuition Fee
+                    School Fee
                   </span>
                 </div>
                 <span className="text-[9px] font-bold text-blue-300 font-mono">
@@ -861,8 +862,18 @@ export const StudentList: React.FC<StudentListProps> = ({
             )}
           </div>
 
+          <button
+            type="button"
+            aria-expanded={showOtherFees}
+            onClick={() => setShowOtherFees((visible) => !visible)}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15 sm:w-auto"
+          >
+            {showOtherFees ? 'Hide other fees' : 'Show other fees'}
+            <ChevronDown className={`h-4 w-4 transition-transform ${showOtherFees ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+
           {/* Paused Fees Notice Bar */}
-          {disabledAdditionalFees.length > 0 && (
+          {showOtherFees && disabledAdditionalFees.length > 0 && (
             <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-black/25 border border-amber-300/20 flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 text-amber-200 text-[11px] font-medium truncate">
                 <PauseCircle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
