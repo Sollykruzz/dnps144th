@@ -20,7 +20,6 @@ import { getTodayDateString, deriveFeeBreakdown } from './calculations';
 import {
   loadExpensesFromFirestore,
 } from './firebase';
-import * as XLSX from 'xlsx';
 
 const STORAGE_EXPENSES_PREFIX = 'bursar_school_expenses';
 const STORAGE_EXTRA_INCOMES_PREFIX = 'bursar_school_extra_incomes';
@@ -510,12 +509,12 @@ export function buildBankTransactionHistory(params: {
 /**
  * Exports Bank-Style Transaction History to CSV or Excel (.xlsx)
  */
-export function exportBankTransactionHistory(
+export async function exportBankTransactionHistory(
   transactions: BankTransactionEntry[],
   session: BursarSession,
   format: 'csv' | 'xlsx' = 'csv',
   periodLabel: string = 'All Terms'
-): void {
+): Promise<void> {
   const currency = session.currencySymbol || '₦';
   const rows = transactions.map((tx) => ({
     'Date': tx.date,
@@ -535,6 +534,7 @@ export function exportBankTransactionHistory(
   const dateStamp = getTodayDateString();
 
   if (format === 'xlsx') {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Bank_Statement');
