@@ -24,7 +24,6 @@ import {
   Info
 } from 'lucide-react';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { StudentPaymentRecord, SchoolProfile, PaymentStatus } from '../types';
 import { 
   calculateBalance, 
@@ -458,8 +457,11 @@ export const StudentUploadModal: React.FC<StudentUploadModalProps> = ({
         });
       } else {
         // Excel (.xlsx, .xls)
-        const arrayBuffer = await fileToProcess.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const [{ read, utils }, arrayBuffer] = await Promise.all([
+          import('xlsx'),
+          fileToProcess.arrayBuffer(),
+        ]);
+        const workbook = read(arrayBuffer, { type: 'array' });
         
         // Find best sheet name
         const sheetName =
@@ -471,7 +473,7 @@ export const StudentUploadModal: React.FC<StudentUploadModalProps> = ({
           throw new Error('No sheets found in the Excel workbook.');
         }
 
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '', blankrows: false });
+        const jsonData = utils.sheet_to_json(worksheet, { defval: '', blankrows: false });
         processRawArrayOfRows(jsonData);
         setIsParsing(false);
       }

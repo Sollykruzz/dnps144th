@@ -64,6 +64,22 @@ export const Header: React.FC<HeaderProps> = ({
     return unsub;
   }, []);
 
+  const syncLabel = !isOnline
+    ? 'Offline'
+    : syncStatus?.syncError
+      ? 'Sync needs attention'
+      : syncStatus?.lastFirebaseSyncTime
+        ? `Synced ${syncStatus.lastFirebaseSyncTime}`
+        : 'Connecting to cloud';
+  const syncTitle = !isOnline
+    ? 'Device is offline; cloud sync will resume when the connection returns.'
+    : syncStatus?.syncError
+      ? `Sync issue: ${syncStatus.syncError}`
+      : syncStatus?.lastFirebaseSyncTime
+        ? `Last successful sync: ${syncStatus.lastFirebaseSyncTime}`
+        : 'Waiting for the first successful cloud sync';
+  const isSyncHealthy = isOnline && !syncStatus?.syncError && Boolean(syncStatus?.lastFirebaseSyncTime);
+
   const isAdmin = session.role === 'admin';
   const roleLabel = isAdmin 
     ? (session.userTitle?.toLowerCase().includes('proprietor') || session.bursarName?.toLowerCase().includes('proprietor') ? 'Proprietor' : 'Admin')
@@ -121,33 +137,20 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Cloud Live & Student Count Unified Pill Group */}
             <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-full px-1.5 py-0.5 text-[10px]">
               <button
+                type="button"
                 onClick={onOpenSettings}
                 id="firebase-cloud-indicator"
-                title={
-                  syncStatus?.syncError
-                    ? `Sync notice: ${syncStatus.syncError}`
-                    : syncStatus?.lastFirebaseSyncTime
-                    ? `Last synced with Firestore at: ${syncStatus.lastFirebaseSyncTime}`
-                    : 'Cloud Database: Real-time Firestore synchronization active'
-                }
+                title={syncTitle}
+                aria-label={`${syncLabel}. Open sync settings.`}
                 className={`inline-flex items-center gap-1 font-semibold transition-colors cursor-pointer ${
-                  syncStatus?.syncError?.toLowerCase().includes('quota')
-                    ? 'text-amber-700 hover:text-amber-800'
-                    : 'text-emerald-700 hover:text-emerald-800'
+                  isSyncHealthy ? 'text-emerald-700 hover:text-emerald-800' : 'text-amber-700 hover:text-amber-800'
                 }`}
               >
                 <Zap
-                  className={`w-3 h-3 ${
-                    syncStatus?.syncError?.toLowerCase().includes('quota')
-                      ? 'text-amber-600 fill-amber-500'
-                      : 'text-emerald-600 fill-emerald-500'
-                  }`}
+                  aria-hidden="true"
+                  className={`w-3 h-3 ${isSyncHealthy ? 'text-emerald-600 fill-emerald-500' : 'text-amber-600 fill-amber-500'}`}
                 />
-                <span>
-                  {syncStatus?.syncError?.toLowerCase().includes('quota')
-                    ? 'Quota Paused (Local Active)'
-                    : 'Cloud Live'}
-                </span>
+                <span>{syncLabel}</span>
               </button>
               <span className="text-slate-300">|</span>
               <span className="text-slate-700 font-bold">{studentCount} Students</span>

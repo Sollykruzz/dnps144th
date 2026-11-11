@@ -15,7 +15,6 @@ import {
   ScholarshipRecord,
   RemittanceRecord
 } from '../types';
-import * as XLSX from 'xlsx';
 import { safeStorage } from './storage';
 import { 
   calculateBalance, 
@@ -114,7 +113,7 @@ export function generateCsvData(
 /**
  * Downloads a comprehensive multi-tab Excel (.xlsx) backup containing all school data
  */
-export function downloadComprehensiveExcelBackup(
+export async function downloadComprehensiveExcelBackup(
   data: {
     students?: StudentPaymentRecord[];
     staff?: StaffMember[];
@@ -125,7 +124,8 @@ export function downloadComprehensiveExcelBackup(
     school?: SchoolProfile | null;
   },
   session: BursarSession
-): void {
+): Promise<void> {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // 1. Students sheet

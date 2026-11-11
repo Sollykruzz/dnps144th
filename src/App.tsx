@@ -70,20 +70,20 @@ import {
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { StudentList } from './components/StudentList';
-import { RecordPaymentView } from './components/RecordPaymentView';
-import { AnalyticsView } from './components/AnalyticsView';
-import { CollectionView } from './components/CollectionView';
+const RecordPaymentView = React.lazy(() => import('./components/RecordPaymentView').then((module) => ({ default: module.RecordPaymentView })));
+const AnalyticsView = React.lazy(() => import('./components/AnalyticsView').then((module) => ({ default: module.AnalyticsView })));
+const CollectionView = React.lazy(() => import('./components/CollectionView').then((module) => ({ default: module.CollectionView })));
 import { BackupRolloverModal } from './components/BackupRolloverModal';
 import { EndTermModal } from './components/EndTermModal';
 import { StudentDetailsModal } from './components/StudentDetailsModal';
 import { AddExistingStudentModal } from './components/AddExistingStudentModal';
 import { ScholarshipModal } from './components/ScholarshipModal';
-import { AdmissionView } from './components/AdmissionView';
+const AdmissionView = React.lazy(() => import('./components/AdmissionView').then((module) => ({ default: module.AdmissionView })));
 import { SettingsModal } from './components/SettingsModal';
 import { SchoolModal } from './components/SchoolModal';
 import { LoginModal } from './components/LoginModal';
 import { DuplicateCleanerModal } from './components/DuplicateCleanerModal';
-import { PayrollView } from './components/PayrollView';
+const PayrollView = React.lazy(() => import('./components/PayrollView').then((module) => ({ default: module.PayrollView })));
 import { StudentUploadModal } from './components/StudentUploadModal';
 import { AdditionalFeesModal } from './components/AdditionalFeesModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -451,6 +451,11 @@ export default function App() {
   const [schoolToEdit, setSchoolToEdit] = useState<SchoolProfile | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  }, []);
 
   const handleUpdateStudentsFromDuplicateCleaner = (updated: StudentPaymentRecord[], message?: string) => {
     const currentSchoolId = activeSchool?.id || 'dominion-group';
@@ -519,8 +524,12 @@ export default function App() {
   }, []);
 
   const showToast = (msg: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 4000);
   };
 
   // Instant local-first student & scholarship loader with Firestore cloud sync
@@ -1870,6 +1879,13 @@ export default function App() {
 
         {/* Dynamic Tab Content Views */}
         <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <React.Suspense
+            fallback={
+              <div className="flex min-h-48 items-center justify-center text-sm font-medium text-slate-500" role="status" aria-live="polite">
+                Loading section...
+              </div>
+            }
+          >
           {activeTab === 'students' && (
             <StudentList
               students={students}
@@ -1957,9 +1973,10 @@ export default function App() {
               school={activeSchool}
             />
           )}
+          </React.Suspense>
         </main>
 
-        {/* Bottom 5-Tab Navigation */}
+        {/* Bottom Navigation */}
         <BottomNav
           activeTab={activeTab}
           onTabChange={(tab) => {
