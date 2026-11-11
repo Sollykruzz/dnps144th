@@ -4,20 +4,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  RotateCw, 
-  Settings, 
-  WifiOff, 
-  CheckCircle2, 
-  AlertTriangle,
+import {
+  RotateCw,
+  Settings,
+  WifiOff,
   UserCheck,
   Zap,
-  Cloud,
   FileSpreadsheet,
-  Database,
   LogOut,
   Shield,
-  User
+  User,
+  MoreHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { BursarSession, SchoolProfile } from '../types';
 import { DGOSLogo } from './DGOSLogo';
@@ -86,137 +84,133 @@ export const Header: React.FC<HeaderProps> = ({
     : 'Bursar';
 
   return (
-    <header className="shrink-0 bg-white border-b border-[#f0f0f0] px-3.5 sm:px-5 py-2.5 sm:py-3.5 z-30">
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
-        
-        {/* Branding & Status */}
-        <div className="min-w-0 w-full sm:w-auto sm:flex-1">
-          <div className="flex items-center gap-2 sm:gap-2.5">
+    <header className="relative z-30 shrink-0 border-b border-slate-200 bg-white">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-3 py-2 sm:px-6 sm:py-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:flex-1">
+          <div className="flex min-w-0 items-center gap-2">
             <DGOSLogo size="sm" />
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-sm sm:text-lg font-black tracking-tight text-[#0f172a] uppercase leading-tight truncate max-w-full sm:max-w-xs md:max-w-md">
-                  {branding.shortName || branding.appName.substring(0, 15)}
-                </h1>
-              </div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-wider uppercase truncate max-w-full sm:max-w-sm md:max-w-lg">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-extrabold leading-tight tracking-tight text-slate-950 sm:text-lg">
+                {branding.shortName || branding.appName.substring(0, 15)}
+              </h1>
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[11px]">
                 {branding.appName || session.schoolName}
-              </span>
+              </p>
             </div>
           </div>
 
-          {/* Status Indicators Bar - Clean, well-structured */}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-slate-500 mt-1 font-medium flex-wrap">
-            {/* User Role Badge */}
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[9px] sm:text-[10px] uppercase tracking-wider ${
-              isAdmin ? 'bg-purple-100 text-purple-900 border border-purple-200' : 'bg-blue-100 text-blue-900 border border-blue-200'
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold sm:gap-2">
+            <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 ${
+              isAdmin ? 'border-violet-200 bg-violet-50 text-violet-800' : 'border-blue-200 bg-blue-50 text-blue-800'
             }`}>
-              {isAdmin ? <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-700" /> : <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-700" />}
+              {isAdmin ? <Shield className="size-3.5" aria-hidden="true" /> : <User className="size-3.5" aria-hidden="true" />}
               <span>{roleLabel}</span>
             </span>
 
-            <span className="text-slate-300">•</span>
-
-            {/* Online / Offline status */}
-            <span className="inline-flex items-center gap-1">
-              {isOnline ? (
-                <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Online
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-rose-500 font-bold">
-                  <WifiOff className="w-3 h-3" />
-                  Offline
-                </span>
-              )}
+            <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 ${
+              isOnline ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'
+            }`}>
+              {isOnline ? <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> : <WifiOff className="size-3.5" aria-hidden="true" />}
+              {isOnline ? 'Online' : 'Offline'}
             </span>
 
-            <span className="text-slate-300">•</span>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              id="firebase-cloud-indicator"
+              title={syncTitle}
+              aria-label={`${syncLabel}. Open sync settings.`}
+              className={`inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 transition-colors hover:bg-slate-100 ${
+                isSyncHealthy ? 'text-emerald-800' : 'text-amber-800'
+              }`}
+            >
+              <Zap className={`size-3.5 shrink-0 ${isSyncHealthy ? 'fill-emerald-500 text-emerald-600' : 'fill-amber-500 text-amber-600'}`} aria-hidden="true" />
+              <span className="truncate">{syncLabel}</span>
+            </button>
 
-            {/* Cloud Live & Student Count Unified Pill Group */}
-            <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-full px-1.5 py-0.5 text-[10px]">
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                id="firebase-cloud-indicator"
-                title={syncTitle}
-                aria-label={`${syncLabel}. Open sync settings.`}
-                className={`inline-flex items-center gap-1 font-semibold transition-colors cursor-pointer ${
-                  isSyncHealthy ? 'text-emerald-700 hover:text-emerald-800' : 'text-amber-700 hover:text-amber-800'
-                }`}
-              >
-                <Zap
-                  aria-hidden="true"
-                  className={`w-3 h-3 ${isSyncHealthy ? 'text-emerald-600 fill-emerald-500' : 'text-amber-600 fill-amber-500'}`}
-                />
-                <span>{syncLabel}</span>
-              </button>
-              <span className="text-slate-300">|</span>
-              <span className="text-slate-700 font-bold">{studentCount} Students</span>
-            </div>
+            <span className="inline-flex min-h-7 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 text-slate-700">
+              {studentCount} students
+            </span>
           </div>
         </div>
 
-        {/* Circular Action Controls */}
-        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end sm:shrink-0">
-          {/* PWA 1-Tap App Install Button */}
-          <PWAInstallButton variant="header" />
-
-          {/* Upload Excel / CSV File */}
-          {onOpenSheetUpload && (
-            <button
-              onClick={onOpenSheetUpload}
-              id="header-sheet-upload-btn"
-              title="Import Student Roster from Excel / CSV"
-              className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:scale-95 flex items-center justify-center transition-all border border-emerald-200 cursor-pointer"
+        <div className="flex items-center justify-end">
+          <details className="group relative">
+            <summary
+              aria-label="Open workspace tools"
+              className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 [&::-webkit-details-marker]:hidden"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            </button>
-          )}
+              <MoreHorizontal className="size-4" aria-hidden="true" />
+              <span>Tools</span>
+              <ChevronDown className="size-3.5 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
 
-          {/* Quick Add Existing Student */}
-          <button
-            onClick={onOpenAddStudent}
-            id="quick-add-student-btn"
-            title="Add Existing Student"
-            className="w-10 h-10 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center hover:bg-black active:scale-95 transition-all shadow-xs cursor-pointer"
-          >
-            <UserCheck className="w-4 h-4 text-emerald-400" />
-          </button>
-
-          {/* Sync / Refresh */}
-          <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            id="sync-refresh-btn"
-            title="Refresh & Synchronize with Firebase Firestore"
-            className="w-10 h-10 rounded-full bg-[#f4f4f7] text-[#1a1a1a] flex items-center justify-center hover:bg-slate-200 active:scale-95 disabled:opacity-50 transition-all border border-[#eee] cursor-pointer"
-          >
-            <RotateCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#2563eb]' : ''}`} />
-          </button>
-
-          {/* Settings */}
-          <button
-            onClick={onOpenSettings}
-            id="open-settings-btn"
-            title="Settings & Cloud Database"
-            className="w-10 h-10 rounded-full bg-[#f4f4f7] text-[#1a1a1a] flex items-center justify-center hover:bg-slate-200 active:scale-95 transition-all border border-[#eee] relative cursor-pointer"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          {/* Logout / Lock System */}
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              id="header-lock-logout-btn"
-              title="Lock System / Log Out"
-              className="w-10 h-10 rounded-full bg-rose-50 text-rose-700 flex items-center justify-center hover:bg-rose-100 active:scale-95 transition-all border border-rose-200 cursor-pointer"
+            <div
+              onClick={(event) => {
+                const menu = event.currentTarget.closest('details');
+                if (menu) menu.open = false;
+              }}
+              className="absolute right-0 top-full z-50 mt-2 flex w-60 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"
             >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
+              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Workspace tools</p>
+              <PWAInstallButton variant="compact" className="w-full justify-start" />
+
+              {onOpenSheetUpload && (
+                <button
+                  type="button"
+                  onClick={onOpenSheetUpload}
+                  id="header-sheet-upload-btn"
+                  className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                >
+                  <FileSpreadsheet className="size-4 text-emerald-700" aria-hidden="true" />
+                  Import student roster
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={onOpenAddStudent}
+                id="quick-add-student-btn"
+                className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              >
+                <UserCheck className="size-4" aria-hidden="true" />
+                Add student
+              </button>
+
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isLoading}
+                id="sync-refresh-btn"
+                className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-50"
+              >
+                <RotateCw className={`size-4 ${isLoading ? 'animate-spin text-blue-600' : ''}`} aria-hidden="true" />
+                Refresh and sync
+              </button>
+
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                id="open-settings-btn"
+                className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              >
+                <Settings className="size-4" aria-hidden="true" />
+                Settings and database
+              </button>
+
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  id="header-lock-logout-btn"
+                  className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                >
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Log out
+                </button>
+              )}
+            </div>
+          </details>
         </div>
       </div>
     </header>

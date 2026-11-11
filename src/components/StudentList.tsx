@@ -10,6 +10,7 @@ import {
   X, 
   UserPlus, 
   UserCheck,
+  MoreHorizontal,
   AlertCircle, 
   RotateCw, 
   GraduationCap, 
@@ -82,6 +83,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   });
 
   const [visibleCount, setVisibleCount] = useState<number>(30);
+  const [showOtherFees, setShowOtherFees] = useState(false);
 
   // Effective fee schedule resolver context
   const effectiveSchedule = activeSchool || feeSchedule;
@@ -345,65 +347,67 @@ export const StudentList: React.FC<StudentListProps> = ({
   };
 
   return (
-    <div className="flex-1 pb-28 px-5 pt-4 space-y-4">
-      {/* 1. Quick Operations Ribbon */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pb-28 pt-3 sm:px-6 sm:pt-4 lg:px-8">
+      {/* 1. Quick Operations */}
+      <div className="flex items-center gap-2" role="group" aria-label="Student actions">
         <button
+          type="button"
           onClick={onOpenAddStudent}
           id="quick-enroll-student-btn"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#0f172a] hover:bg-black text-white text-xs font-bold shadow-xs active:scale-95 transition-all shrink-0 cursor-pointer"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 active:scale-[0.99]"
         >
-          <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Enroll Student</span>
+          <UserPlus className="size-4 text-emerald-400" aria-hidden="true" />
+          <span>Enroll student</span>
         </button>
 
-        {onOpenSheetUpload && (
-          <button
-            onClick={onOpenSheetUpload}
-            id="quick-sheet-upload-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
-          >
-            <Layers className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Upload via Sheet / CSV</span>
-          </button>
-        )}
+        {(onOpenSheetUpload || onOpenBackup || onOpenScholarships || onOpenAdditionalFees) && (
+          <details className="group relative">
+            <summary
+              aria-label="Open more student actions"
+              className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 [&::-webkit-details-marker]:hidden"
+            >
+              <MoreHorizontal className="size-4" aria-hidden="true" />
+              <span>More actions</span>
+              <ChevronDown className="size-3.5 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
 
-        {onOpenBackup && (
-          <button
-            onClick={onOpenBackup}
-            id="quick-sheet-backup-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Backup / Export</span>
-          </button>
-        )}
-
-        {onOpenScholarships && (
-          <button
-            onClick={onOpenScholarships}
-            id="quick-scholarships-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
-          >
-            <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
-            <span>Scholarships ({scholarshipCount})</span>
-          </button>
-        )}
-
-        {onOpenAdditionalFees && (
-          <button
-            onClick={onOpenAdditionalFees}
-            id="quick-additional-fees-btn"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
-          >
-            <Layers className="w-3.5 h-3.5 text-purple-600" />
-            <span>Manage Fees</span>
-            {activeAdditionalFees.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-purple-200 text-purple-900 text-[10px] font-black">
-                {activeAdditionalFees.length} Active
-              </span>
-            )}
-          </button>
+            <div
+              onClick={(event) => {
+                const menu = event.currentTarget.closest('details');
+                if (menu) menu.open = false;
+              }}
+              className="absolute left-0 top-full z-20 mt-2 flex w-64 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"
+            >
+              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Student actions</p>
+              {onOpenSheetUpload && (
+                <button type="button" onClick={onOpenSheetUpload} id="quick-sheet-upload-btn" className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
+                  <Layers className="size-4" aria-hidden="true" />
+                  Upload spreadsheet
+                </button>
+              )}
+              {onOpenBackup && (
+                <button type="button" onClick={onOpenBackup} id="quick-sheet-backup-btn" className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                  <ShieldCheck className="size-4" aria-hidden="true" />
+                  Backup / export
+                </button>
+              )}
+              {onOpenScholarships && (
+                <button type="button" onClick={onOpenScholarships} id="quick-scholarships-btn" className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600">
+                  <GraduationCap className="size-4" aria-hidden="true" />
+                  Scholarships ({scholarshipCount})
+                </button>
+              )}
+              {onOpenAdditionalFees && (
+                <button type="button" onClick={onOpenAdditionalFees} id="quick-additional-fees-btn" className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-violet-800 transition-colors hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600">
+                  <Layers className="size-4" aria-hidden="true" />
+                  Manage fees
+                  {activeAdditionalFees.length > 0 && (
+                    <span className="ml-auto rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-800">{activeAdditionalFees.length} active</span>
+                  )}
+                </button>
+              )}
+            </div>
+          </details>
         )}
       </div>
 
@@ -609,20 +613,20 @@ export const StudentList: React.FC<StudentListProps> = ({
       {students.length > 0 && (
         <div 
           id="students-collection-summary-card"
-          className="p-5 bg-gradient-to-br from-[#1e3a8a] via-[#1d4ed8] to-[#1e40af] rounded-[28px] text-white shadow-xl shadow-blue-500/15 space-y-4 border border-blue-400/20"
+          className="overflow-hidden rounded-[26px] border border-slate-700 bg-slate-900 p-5 text-white shadow-lg shadow-slate-950/10 sm:p-7"
         >
           {/* Top Section: Overall Total Collection (Tuition + Admission + Lesson + Exam) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-1.5 text-blue-200">
-                <Wallet className="w-4 h-4 text-blue-300" />
-                <p className="text-[11px] uppercase font-black tracking-wider">
-                  Total Fees Collection Dashboard
-                </p>
-              </div>
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Wallet className="w-4 h-4 text-teal-700" />
+                    <p className="text-[11px] uppercase font-bold tracking-[0.14em]">
+                      School &amp; exam fee collection
+                    </p>
+                  </div>
               <div className="flex items-baseline gap-2 mt-1">
                 <h3 className="text-2xl sm:text-3xl font-black tracking-tight font-mono text-white">
-                  {formatCurrency(metrics.overallCollected, currencySymbol)}
+                  {formatCurrency(metrics.schoolFeeCollected + metrics.examFeeCollected, currencySymbol)}
                 </h3>
                 <span className="text-xs text-blue-200/90 font-medium">
                   collected
@@ -637,10 +641,10 @@ export const StudentList: React.FC<StudentListProps> = ({
                   </span>
                 </span>
                 <span>
-                  Target: <span className="font-bold text-white font-mono">{formatCurrency(metrics.overallExpected, currencySymbol)}</span> ({metrics.count} students)
+                  Target: <span className="font-bold text-white font-mono">{formatCurrency(metrics.schoolFeeExpected + metrics.examFeeExpected, currencySymbol)}</span> ({metrics.count} students)
                 </span>
                 <span className="text-amber-300 font-semibold font-mono">
-                  Due: <span>{formatCurrency(metrics.overallBalance, currencySymbol)}</span>
+                  Due: <span>{formatCurrency(metrics.schoolFeeBalance + metrics.examFeeBalance, currencySymbol)}</span>
                 </span>
               </div>
             </div>
@@ -650,31 +654,31 @@ export const StudentList: React.FC<StudentListProps> = ({
                 Total Balance Due
               </span>
               <span className="text-lg sm:text-xl font-black text-amber-300 font-mono">
-                {formatCurrency(metrics.overallBalance, currencySymbol)}
+                {formatCurrency(metrics.schoolFeeBalance + metrics.examFeeBalance, currencySymbol)}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-200 font-bold border border-blue-400/30">
-                {metrics.overallRate.toFixed(1)}% Collected
+                {(metrics.schoolFeeExpected + metrics.examFeeExpected > 0 ? ((metrics.schoolFeeCollected + metrics.examFeeCollected) / (metrics.schoolFeeExpected + metrics.examFeeExpected)) * 100 : 0).toFixed(1)}% Collected
               </span>
             </div>
           </div>
 
           {/* Overall Progress Bar */}
-          <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-cyan-400 to-emerald-400 h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, metrics.overallRate))}%` }}
+          <div className="h-2 w-full overflow-hidden rounded-full bg-black/20">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(0, (metrics.schoolFeeExpected + metrics.examFeeExpected) > 0 ? ((metrics.schoolFeeCollected + metrics.examFeeCollected) / (metrics.schoolFeeExpected + metrics.examFeeExpected)) * 100 : 0))}%` }}
             />
           </div>
 
-          {/* Bottom Grid: 5 Dedicated Fee Collection Cards (School Fee, Exam Fee, Lesson Fee, Admission Fee, Additional/PTA Fees) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+          {/* Keep the two most-used categories visible; reveal the rest on demand. */}
+          <div className={`grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-2 ${showOtherFees ? '' : '[&>*:nth-child(n+3)]:hidden'}`}>
             {/* 1. School Fee (Tuition) */}
             <div className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3 flex flex-col justify-between border border-white/15">
               <div className="flex items-center justify-between gap-1 text-blue-200 mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <GraduationCap className="w-3.5 h-3.5 text-blue-300 shrink-0" />
                   <span className="text-[10px] font-black uppercase tracking-wider truncate">
-                    Tuition Fee
+                    School Fee
                   </span>
                 </div>
                 <span className="text-[9px] font-bold text-blue-300 font-mono">
@@ -861,8 +865,18 @@ export const StudentList: React.FC<StudentListProps> = ({
             )}
           </div>
 
+          <button
+            type="button"
+            aria-expanded={showOtherFees}
+            onClick={() => setShowOtherFees((visible) => !visible)}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15 sm:w-auto"
+          >
+            {showOtherFees ? 'Hide other fees' : 'Show other fees'}
+            <ChevronDown className={`h-4 w-4 transition-transform ${showOtherFees ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+
           {/* Paused Fees Notice Bar */}
-          {disabledAdditionalFees.length > 0 && (
+          {showOtherFees && disabledAdditionalFees.length > 0 && (
             <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-black/25 border border-amber-300/20 flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 text-amber-200 text-[11px] font-medium truncate">
                 <PauseCircle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
