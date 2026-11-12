@@ -31,6 +31,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { StudentPaymentRecord, PaymentStatus, FilterState, SchoolFeeSchedule, SchoolProfile } from '../types';
+import { SchoolPerformanceCards } from './SchoolPerformanceCards';
 import { StudentCard } from './StudentCard';
 import { formatCurrency, sortClassesInAcademicOrder, deriveFeeBreakdown, getClassFeeSchedule, parseFinancialAmount } from '../services/calculations';
 import { detectDuplicateGroups } from '../services/duplicateService';
@@ -43,6 +44,8 @@ interface StudentListProps {
   currencySymbol: string;
   feeSchedule?: SchoolFeeSchedule;
   activeSchool?: SchoolProfile;
+  schools: SchoolProfile[];
+  studentsBySchool: Record<string, StudentPaymentRecord[]>;
   onRefresh: () => void;
   onSelectStudent: (student: StudentPaymentRecord) => void;
   onOpenAddStudent: () => void;
@@ -63,6 +66,8 @@ export const StudentList: React.FC<StudentListProps> = ({
   currencySymbol,
   feeSchedule,
   activeSchool,
+  schools,
+  studentsBySchool,
   onRefresh,
   onSelectStudent,
   onOpenAddStudent,
@@ -410,6 +415,8 @@ export const StudentList: React.FC<StudentListProps> = ({
           </details>
         )}
       </div>
+
+      <SchoolPerformanceCards schools={schools} studentsBySchool={studentsBySchool} />
 
       {/* 2. Error State */}
       {error && (
