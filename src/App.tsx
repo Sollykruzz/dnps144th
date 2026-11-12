@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { AlertTriangle, X
+import { AlertTriangle, CreditCard, X
 } from 'lucide-react';
 import { 
   StudentPaymentRecord, 
@@ -75,6 +75,7 @@ import { BottomNav } from './components/BottomNav';
 import { StudentList } from './components/StudentList';
 const RecordPaymentView = React.lazy(() => import('./components/RecordPaymentView').then((module) => ({ default: module.RecordPaymentView })));
 const AnalyticsView = React.lazy(() => import('./components/AnalyticsView').then((module) => ({ default: module.AnalyticsView })));
+const SchoolPaymentsDashboard = React.lazy(() => import('./components/SchoolPaymentsDashboard'));
 const CollectionView = React.lazy(() => import('./components/CollectionView').then((module) => ({ default: module.CollectionView })));
 import { BackupRolloverModal } from './components/BackupRolloverModal';
 import { EndTermModal } from './components/EndTermModal';
@@ -227,6 +228,16 @@ export default function App() {
 
   // Data & Network States
   const [students, setStudents] = useState<StudentPaymentRecord[]>(() => getStoredStudents(activeSchoolId));
+  const [schoolStudentsCache, setSchoolStudentsCache] = useState<Record<string, StudentPaymentRecord[]>>({});
+  const schoolStudentsById = useMemo(() => {
+    const rosters: Record<string, StudentPaymentRecord[]> = {};
+    schools.forEach((school) => {
+      rosters[school.id] = school.id === activeSchool?.id
+        ? students
+        : schoolStudentsCache[school.id] ?? getStoredStudents(school.id);
+    });
+    return rosters;
+  }, [schools, activeSchool?.id, students, schoolStudentsCache]);
   // Keys of payment attempts whose save is not confirmed yet (see handleSubmitPayment)
   const pendingPaymentKeysRef = useRef<Map<string, { key: string; createdAt: number }>>(new Map());
   const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => getStoredScholarships(activeSchoolId));
@@ -432,6 +443,29 @@ export default function App() {
     };
   }, [activeSchool?.id]);
 
+  useEffect(() => {
+    setSchoolStudentsCache((current) => (
+      current[activeSchool.id] === students
+        ? current
+        : { ...current, [activeSchool.id]: students }
+    ));
+  }, [activeSchool.id, students]);
+
+  useEffect(() => {
+    const otherSchools = schools.filter((school) => school.id !== activeSchool.id);
+    const unsubscribers = otherSchools.map((school) => subscribeStudentsFromFirestore(school.id, (liveStudents) => {
+      if (!Array.isArray(liveStudents)) return;
+      saveStoredStudents(liveStudents, school.id);
+      setSchoolStudentsCache((current) => ({ ...current, [school.id]: liveStudents }));
+    }));
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => {
+        if (unsubscribe) unsubscribe();
+      });
+    };
+  }, [schools, activeSchool.id]);
+
   const pendingRemittanceCount = useMemo(() => {
     return remittances.filter((r) => r.status === 'pending' || r.approvalStatus === 'pending').length;
   }, [remittances]);
@@ -439,6 +473,59 @@ export default function App() {
   // Modals & Interactive States
   const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<StudentPaymentRecord | null>(null);
   const [studentForPayment, setStudentForPayment] = useState<StudentPaymentRecord | null>(null);
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
+  const recordPaymentDialogRef = useRef<HTMLDivElement>(null);
+  const recordPaymentCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const recordPaymentButtonRef = useRef<HTMLButtonElement>(null);
+  const isAdditionalFeesOpenRef = useRef(false);
+  const openRecordPayment = useCallback(() => setIsRecordPaymentOpen(true), []);
+  const closeRecordPayment = useCallback(() => {
+    setIsRecordPaymentOpen(false);
+    setStudentForPayment(null);
+  }, []);
+
+  useEffect(() => {
+    if (!isRecordPaymentOpen) return;
+
+    const dialog = recordPaymentDialogRef.current;
+    const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    recordPaymentCloseButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isAdditionalFeesOpenRef.current) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRecordPayment();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previousActiveElement?.isConnected) previousActiveElement.focus();
+      else recordPaymentButtonRef.current?.focus();
+    };
+  }, [isRecordPaymentOpen, closeRecordPayment]);
   const [studentToGrantScholarship, setStudentToGrantScholarship] = useState<StudentPaymentRecord | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [enrollmentStep, setEnrollmentStep] = useState<'choose' | 'new' | 'existing' | null>(null);
@@ -452,6 +539,9 @@ export default function App() {
   const [isDuplicateCleanerOpen, setIsDuplicateCleanerOpen] = useState<boolean>(false);
   const [isSheetUploadOpen, setIsSheetUploadOpen] = useState<boolean>(false);
   const [isAdditionalFeesOpen, setIsAdditionalFeesOpen] = useState<boolean>(false);
+  useEffect(() => {
+    isAdditionalFeesOpenRef.current = isAdditionalFeesOpen;
+  }, [isAdditionalFeesOpen]);
   
   // School Modal state
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState<boolean>(false);
@@ -1699,7 +1789,7 @@ export default function App() {
   const handleRecordPaymentForStudent = (student: StudentPaymentRecord) => {
     setSelectedStudentForDetails(null);
     setStudentForPayment(student);
-    setActiveTab('record_payment');
+    openRecordPayment();
   };
 
   // Handle Rollover completion
@@ -1911,6 +2001,8 @@ export default function App() {
               currencySymbol={session.currencySymbol}
               feeSchedule={activeSchool?.feeSchedule}
               activeSchool={activeSchool}
+              schools={schools}
+              studentsBySchool={schoolStudentsById}
               onRefresh={() => loadStudents(true)}
               onSelectStudent={(stu) => setSelectedStudentForDetails(stu)}
               onOpenAddStudent={openEnrollmentChooser}
@@ -1926,20 +2018,7 @@ export default function App() {
           )}
 
           {activeTab === 'record_payment' && (
-            <RecordPaymentView
-              students={students}
-              currencySymbol={session.currencySymbol}
-              preselectedStudent={studentForPayment}
-              onClearPreselectedStudent={() => setStudentForPayment(null)}
-              onSubmitPayment={handleSubmitPayment}
-              onViewStudentInList={(stu) => {
-                setSelectedStudentForDetails(stu);
-                setActiveTab('students');
-              }}
-              onOpenAddStudent={openEnrollmentChooser}
-              onOpenAdditionalFees={() => setIsAdditionalFeesOpen(true)}
-              activeSchool={activeSchool}
-            />
+            <SchoolPaymentsDashboard schools={schools} studentsBySchool={schoolStudentsById} />
           )}
 
           {activeTab === 'students' && enrollmentStep === 'new' && (
@@ -1986,7 +2065,7 @@ export default function App() {
               session={session}
               onUpdateStudents={setStudents}
               onSelectStudent={(stu) => setSelectedStudentForDetails(stu)}
-              onOpenRecordPayment={() => setActiveTab('record_payment')}
+              onOpenRecordPayment={openRecordPayment}
               remittances={remittances}
               onUpdateRemittances={setRemittances}
               school={activeSchool}
@@ -2009,6 +2088,73 @@ export default function App() {
           studentCount={students.length}
           pendingRemittanceCount={pendingRemittanceCount}
         />
+
+        {enrollmentStep === null && (
+          <button
+            type="button"
+            onClick={openRecordPayment}
+            aria-haspopup="dialog"
+            aria-controls="record-payment-dialog"
+            ref={recordPaymentButtonRef}
+            className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-12 items-center gap-2 rounded-full bg-slate-950 px-4 text-xs font-black text-white shadow-xl shadow-slate-950/20 transition-transform hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 active:scale-[0.98] md:bottom-20 md:right-8"
+          >
+            <CreditCard className="size-4 text-emerald-300" aria-hidden="true" />
+            <span>Record payment</span>
+          </button>
+        )}
+
+        <div
+          ref={recordPaymentDialogRef}
+          id="record-payment-dialog"
+          role="dialog"
+          aria-modal={isRecordPaymentOpen && !isAdditionalFeesOpen}
+          aria-hidden={!isRecordPaymentOpen}
+          aria-labelledby="record-payment-dialog-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeRecordPayment();
+          }}
+          className={`fixed inset-0 z-[60] items-stretch justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4 ${isRecordPaymentOpen ? 'flex' : 'hidden'}`}
+        >
+          {isRecordPaymentOpen && (
+            <div className="mx-auto flex h-full max-h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl">
+              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <h2 id="record-payment-dialog-title" className="text-sm font-black text-slate-950">Record payment</h2>
+                  <p className="truncate text-[11px] text-slate-500">{activeSchool.name}</p>
+                </div>
+                <button
+                  type="button"
+                  ref={recordPaymentCloseButtonRef}
+                  onClick={closeRecordPayment}
+                  aria-label="Close record payment"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <RecordPaymentView
+                  students={students}
+                  currencySymbol={session.currencySymbol}
+                  preselectedStudent={studentForPayment}
+                  onClearPreselectedStudent={() => setStudentForPayment(null)}
+                  onSubmitPayment={handleSubmitPayment}
+                  onViewStudentInList={(student) => {
+                    closeRecordPayment();
+                    setSelectedStudentForDetails(student);
+                    setActiveTab('students');
+                  }}
+                  onOpenAddStudent={() => {
+                    closeRecordPayment();
+                    openEnrollmentChooser();
+                  }}
+                  onOpenAdditionalFees={() => setIsAdditionalFeesOpen(true)}
+                  activeSchool={activeSchool}
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Student Full Details Modal with Confirmation */}
         <StudentDetailsModal

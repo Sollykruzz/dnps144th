@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { CreditCard, HandCoins, MoreHorizontal, TrendingUp, UserPlus, Users, WalletCards } from 'lucide-react';
+import { HandCoins, MoreHorizontal, TrendingUp, UserPlus, Users, WalletCards } from 'lucide-react';
 import { TabType } from '../types';
 
 export type { TabType };
@@ -30,7 +30,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const primaryTabs: { id: TabType; label: string; icon: typeof Users }[] = [
     { id: 'students', label: 'Students', icon: Users },
-    { id: 'record_payment', label: 'Record', icon: CreditCard },
+    { id: 'record_payment', label: 'Payments', icon: TrendingUp },
     { id: 'collection', label: 'Collection', icon: HandCoins },
   ];
   const isSecondaryTab = secondaryTabs.some((tab) => tab.id === activeTab);

@@ -302,7 +302,7 @@ export const AdditionalFeesModal: React.FC<AdditionalFeesModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" aria-labelledby="additional-fees-modal-title" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
         id="additional-fees-modal"
         className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92dvh]"
@@ -314,7 +314,7 @@ export const AdditionalFeesModal: React.FC<AdditionalFeesModalProps> = ({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-black text-slate-900 leading-tight">
+              <h3 id="additional-fees-modal-title" className="text-base font-black text-slate-900 leading-tight">
                 Manage School Fees & Levies
               </h3>
               <p className="text-xs text-slate-500 font-medium">
