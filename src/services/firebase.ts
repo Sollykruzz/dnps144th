@@ -579,6 +579,80 @@ export async function batchSaveStudentsToFirestore(
   }
 }
 
+export interface StudentClassReassignmentResult {
+  success: boolean;
+  movedStudents: StudentPaymentRecord[];
+  firestoreStudentIds: string[];
+  error?: string;
+}
+
+export async function reassignStudentsInFirestore(
+  fromClass: string,
+  toClass: string,
+  schoolId: string = 'dominion-group'
+): Promise<StudentClassReassignmentResult> {
+  const firestore = getFirebaseDb();
+  if (!firestore) {
+    return { success: false, movedStudents: [], firestoreStudentIds: [], error: 'Firestore is not initialized or is offline.' };
+  }
+
+  const sourceClass = fromClass.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const destinationClass = toClass.trim().replace(/\s+/g, ' ');
+  if (!sourceClass || !destinationClass || sourceClass === destinationClass) {
+    return { success: false, movedStudents: [], firestoreStudentIds: [], error: 'Choose two different, valid class names.' };
+  }
+
+  const targetSchool = schoolId.toLowerCase();
+  const targetPath = `schools/${targetSchool}/students`;
+
+  try {
+    let readTimeout: ReturnType<typeof setTimeout> | undefined;
+    const snapshot = await Promise.race([
+      getDocs(collection(firestore, 'schools', targetSchool, 'students')),
+      new Promise<never>((_, reject) => {
+        readTimeout = setTimeout(() => reject(new Error('Firestore roster check timed out.')), 15000);
+      }),
+    ]).finally(() => {
+      if (readTimeout) clearTimeout(readTimeout);
+    });
+
+    const records = snapshot.docs.map((docSnap) => ({
+      ref: docSnap.ref,
+      student: { ...(docSnap.data() as StudentPaymentRecord), id: String(docSnap.data().id || desanitizeDocId(docSnap.id)) },
+    }));
+    const firestoreStudentIds = records.map(({ student }) => student.id).filter(Boolean);
+    const affected = records.filter(({ student }) =>
+      String(student.class || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase() === sourceClass
+    );
+
+    for (let offset = 0; offset < affected.length; offset += 450) {
+      const batch = writeBatch(firestore);
+      const now = new Date().toISOString();
+      affected.slice(offset, offset + 450).forEach(({ ref }) => {
+        batch.update(ref, { class: destinationClass, updatedAt: now, syncedToCloudAt: now });
+      });
+      await batch.commit();
+    }
+
+    lastFirestoreWriteError = null;
+    recordFirebaseSyncSuccess();
+    return {
+      success: true,
+      firestoreStudentIds,
+      movedStudents: affected.map(({ student }) => ({ ...student, class: destinationClass })),
+    };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    lastFirestoreWriteError = error;
+    try {
+      handleFirestoreError(err, OperationType.WRITE, targetPath);
+    } catch {
+      // The failed result is returned to the caller so it can keep the source class configured.
+    }
+    return { success: false, movedStudents: [], firestoreStudentIds: [], error };
+  }
+}
+
 export async function bulkUploadStudentsToFirestore(
   newStudents: StudentPaymentRecord[],
   schoolId: string = 'dominion-group',
