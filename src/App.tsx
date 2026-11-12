@@ -100,6 +100,7 @@ import {
   savePaymentTransaction,
   getLastFirestoreWriteError,
   batchSaveStudentsToFirestore,
+  reassignStudentsInFirestore,
   getStudentsFromFirestore,
   subscribeStudentsFromFirestore,
   deleteStudentFromFirestore,
@@ -786,6 +787,129 @@ export default function App() {
       showToast(`Created & switched to ${created.name} dashboard!`);
     }
     setIsSchoolModalOpen(false);
+  };
+
+  const handleManageClasses = async (
+    updatedSchool: SchoolProfile,
+    reassignment?: { fromClass: string; toClass: string }
+  ): Promise<{ success: boolean; message?: string }> => {
+    const schoolId = updatedSchool.id;
+    const currentSchool = getStoredSchools().find((school) => school.id === schoolId);
+    const normalizeClassName = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+
+    if (!currentSchool || schoolId !== activeSchoolId) {
+      return { success: false, message: 'The active school changed. Reopen Class Manager before saving.' };
+    }
+
+    const cleanedClasses = (updatedSchool.classes || []).map((className) => className.trim().replace(/\s+/g, ' '));
+    if (cleanedClasses.some((className) => !className) || new Set(cleanedClasses.map(normalizeClassName)).size !== cleanedClasses.length) {
+      return { success: false, message: 'Class names must be non-empty and unique.' };
+    }
+
+    const localRoster = [...getStoredStudents(schoolId), ...students];
+    const rosterById = new Map<string, StudentPaymentRecord>();
+    localRoster.forEach((student) => {
+      if (student.id) rosterById.set(String(student.id), student);
+    });
+
+    let movedCount = 0;
+    if (reassignment) {
+      const sourceClass = normalizeClassName(reassignment.fromClass);
+      const targetClass = normalizeClassName(reassignment.toClass);
+      const currentClasses = currentSchool.classes || [];
+      if (
+        !sourceClass ||
+        !targetClass ||
+        sourceClass === targetClass ||
+        !currentClasses.some((className) => normalizeClassName(className) === sourceClass) ||
+        cleanedClasses.some((className) => normalizeClassName(className) === sourceClass) ||
+        !cleanedClasses.some((className) => normalizeClassName(className) === targetClass)
+      ) {
+        return { success: false, message: 'The source or destination class changed. No class was removed.' };
+      }
+
+      if (localRoster.some(
+        (student) => normalizeClassName(student.class || '') === sourceClass && !student.id
+      )) {
+        return { success: false, message: 'A student record is missing its ID. No class was removed; correct that record first.' };
+      }
+      const localStudentsToMove = Array.from(rosterById.values()).filter(
+        (student) => normalizeClassName(student.class || '') === sourceClass
+      );
+
+      const reassignmentResult = await reassignStudentsInFirestore(
+        reassignment.fromClass,
+        reassignment.toClass,
+        schoolId
+      );
+      if (!reassignmentResult.success) {
+        return {
+          success: false,
+          message: `Could not confirm all student updates. The original class is still configured. If some cloud writes completed, retrying will safely continue. ${reassignmentResult.error || ''}`.trim(),
+        };
+      }
+
+      const cloudStudentIds = new Set(reassignmentResult.firestoreStudentIds.map(String));
+      const localOnlyUpdates = localStudentsToMove
+        .filter((student) => !cloudStudentIds.has(String(student.id)))
+        .map((student) => ({ ...student, class: reassignment.toClass }));
+
+      if (localOnlyUpdates.length > 0) {
+        const localOnlySaved = await batchSaveStudentsToFirestore(localOnlyUpdates, schoolId);
+        if (!localOnlySaved) {
+          return {
+            success: false,
+            message: `Some cloud students may already be reassigned, but the class remains configured. Retry to finish saving the remaining records. ${getLastFirestoreWriteError() || ''}`.trim(),
+          };
+        }
+      }
+
+      const updatedRosterById = new Map<string, StudentPaymentRecord>();
+      rosterById.forEach((student, id) => {
+        updatedRosterById.set(
+          id,
+          normalizeClassName(student.class || '') === sourceClass
+            ? { ...student, class: reassignment.toClass }
+            : student
+        );
+      });
+      reassignmentResult.movedStudents.forEach((student) => {
+        const existing = updatedRosterById.get(String(student.id));
+        updatedRosterById.set(String(student.id), existing ? { ...existing, class: reassignment.toClass } : student);
+      });
+
+      const updatedRoster = Array.from(updatedRosterById.values());
+      movedCount = reassignmentResult.movedStudents.length + localOnlyUpdates.length;
+      saveStoredStudents(updatedRoster, schoolId);
+      setStudents(updatedRoster);
+    }
+
+    const profileToSave: SchoolProfile = {
+      ...currentSchool,
+      ...updatedSchool,
+      classes: cleanedClasses,
+      classFeeSchedules: updatedSchool.classFeeSchedules,
+    };
+    const profileSaved = await saveSchoolProfileToFirestore(profileToSave);
+    if (!profileSaved) {
+      return {
+        success: false,
+        message: reassignment
+          ? `Student records were saved to ${reassignment.toClass}, but the class list could not be saved. ${reassignment.fromClass} remains configured; retry the class change. ${getLastFirestoreWriteError() || ''}`.trim()
+          : `Class changes were not confirmed in Firestore, so the saved class list was left unchanged. ${getLastFirestoreWriteError() || ''}`.trim(),
+      };
+    }
+
+    const nextSchools = getStoredSchools().map((school) => (school.id === schoolId ? profileToSave : school));
+    saveStoredSchools(nextSchools);
+    setSchools(nextSchools);
+
+    return {
+      success: true,
+      message: reassignment
+        ? `${reassignment.fromClass} was safely moved to ${reassignment.toClass}; ${movedCount} student record${movedCount === 1 ? '' : 's'} confirmed.`
+        : 'Class changes saved to Firestore.',
+    };
   };
 
   // Update fee schedule across all enrolled students
@@ -2208,8 +2332,9 @@ export default function App() {
           onSaveSchool={handleSaveSchool}
           onUpdateStudentsFee={handleUpdateStudentsFee}
           onUpdateSchoolFromFees={handleUpdateSchoolFromFees}
-          onUpdateStudentsFromFees={handleUpdateStudentsFromFees}
-          onSaveConfig={handleSaveApiConfig}
+  onUpdateStudentsFromFees={handleUpdateStudentsFromFees}
+  onManageClasses={handleManageClasses}
+  onSaveConfig={handleSaveApiConfig}
           onSaveSession={handleSaveSession}
           onOpenEndTerm={() => setIsEndTermOpen(true)}
           onOpenRollover={() => setIsRolloverModalOpen(true)}

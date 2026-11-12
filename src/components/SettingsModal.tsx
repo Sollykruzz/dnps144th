@@ -62,6 +62,7 @@ import { formatCurrency, getClassFeeSchedule, getCurrentAcademicSession, normali
 import { updateSchoolFeeSchedule, getStoredSchools, addAdditionalFeeToSchool, updateAdditionalFeeInSchool, deleteAdditionalFeeFromSchool, getSchoolAdditionalFees, syncAdditionalFeesToStudents } from '../services/schoolService';
 import { DuplicateCleanerView } from './DuplicateCleanerView';
 import { AuditLogsView } from './AuditLogsView';
+import { ClassManager } from './ClassManager';
 import { SchoolBrandingCustomizer } from './SchoolBrandingCustomizer';
 import { UserCredentialManager } from './UserCredentialManager';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -107,6 +108,7 @@ export type AppToolId =
   | 'fee_update'
   | 'additional_fees'
   | 'school_profiles'
+  | 'class_manager'
   | 'duplicate_cleaner'
   | 'term_schedule'
   | 'bursar_settings'
@@ -138,6 +140,10 @@ interface SettingsModalProps {
   onOpenAdditionalFees?: () => void;
   onUpdateSchoolFromFees?: (updatedSchool: SchoolProfile) => void;
   onUpdateStudentsFromFees?: (updatedStudents: StudentPaymentRecord[]) => void;
+  onManageClasses?: (
+    updatedSchool: SchoolProfile,
+    reassignment?: { fromClass: string; toClass: string }
+  ) => Promise<{ success: boolean; message?: string }>;
   onLogout?: () => void;
   onMergeDuplicateGroup?: (primaryId: string, mergedRecord: StudentPaymentRecord, deletedIds: string[]) => Promise<void> | void;
   onDeleteStudent?: (id: string, student: StudentPaymentRecord) => Promise<void> | void;
@@ -160,6 +166,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateStudentsFee,
   onUpdateSchoolFromFees,
   onUpdateStudentsFromFees,
+  onManageClasses,
   onSaveConfig,
   onSaveSession,
   onOpenEndTerm,
@@ -1371,6 +1378,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       badgeColor: Object.keys(classFeeSchedules).length > 0 ? 'bg-purple-100 text-purple-800 font-bold' : 'bg-slate-100 text-slate-700',
     },
     {
+      id: 'class_manager' as AppToolId,
+      title: 'Class Manager',
+      category: 'Academy Configuration',
+      description: 'Add, rename, and remove classes with safe student reassignment',
+      icon: BookOpen,
+      color: 'bg-blue-700 text-white',
+      badge: `${activeSchool?.classes?.length || 0} Classes`,
+      badgeColor: 'bg-blue-100 text-blue-800 font-bold',
+    },
+    {
       id: 'additional_fees' as AppToolId,
       title: 'Additional & Ancillary Fees',
       category: 'Fee Configuration',
@@ -1559,6 +1576,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ? 'Firebase Cloud Database & Sync'
                   : activeAppId === 'school_profiles'
                   ? 'School Campuses & Fee Schedules'
+                  : activeAppId === 'class_manager'
+                  ? 'Class Manager'
                   : activeAppId === 'term_schedule'
                   ? 'Term Duration & Payment Schedule'
                   : activeAppId === 'bursar_settings'
@@ -1775,6 +1794,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* ========================================================================= */}
           {/* VIEW 1: DUPLICATE CLEANER APP                                             */}
           {/* ========================================================================= */}
+          {activeAppId === 'class_manager' && (
+            onManageClasses ? (
+              <ClassManager
+                school={activeSchool}
+                students={students}
+                onManageClasses={onManageClasses}
+              />
+            ) : (
+              <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+                Class management is unavailable because the safe Firestore save action is not configured.
+              </div>
+            )
+          )}
+
           {activeAppId === 'duplicate_cleaner' && (
             <DuplicateCleanerView
               students={students}
