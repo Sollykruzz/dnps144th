@@ -57,12 +57,15 @@ import {
 import { 
   calculateBalance, 
   calculateStatus, 
+  calculateScholarshipTuition,
   getTodayDateString,
   getClassFeeSchedule,
   deriveFeeBreakdown,
   buildCombinedReceipt,
   detectLessonPlanMonths,
   isLessonDisabled,
+  parseFinancialAmount,
+  roundMoney,
   setConfiguredAcademicSession,
   FEE_SCHEDULE
 
@@ -1195,18 +1198,23 @@ export default function App() {
     const existingStudent = students.find((s) => s.id === scholarshipData.studentId);
     const targetClass = scholarshipData.studentClass || existingStudent?.class || 'Primary 1';
     const classSchedule = getClassFeeSchedule(activeSchool, targetClass);
-
-    // Live tuition resolution based on Settings
-    const baseTuition = classSchedule.tuitionFee;
-    const rawPct = Number(scholarshipData.scholarshipPercentage);
-    const pct = Number.isFinite(rawPct) ? Math.min(100, Math.max(0, rawPct)) : 100;
     const isExempt = scholarshipData.exemptSchoolFee !== false;
-    let tuitionFee = 0;
-    if (isExempt || pct >= 100) {
-      tuitionFee = 0;
-    } else {
-      tuitionFee = Math.round(baseTuition * (1 - pct / 100));
-    }
+    const tuitionCalculation = calculateScholarshipTuition(
+      classSchedule.tuitionFee,
+      scholarshipData.scholarshipPercentage,
+      isExempt
+    );
+    const pct = tuitionCalculation.scholarshipPercentage;
+    const tuitionFee = tuitionCalculation.tuitionFee;
+    const additionalFeeBreakdown = deriveFeeBreakdown(
+      existingStudent
+        ? { ...existingStudent, class: targetClass, term: scholarshipData.term || existingStudent.term }
+        : { class: targetClass, term: scholarshipData.term, is_new_admission: false },
+      activeSchool,
+      { forceScheduleRates: true }
+    );
+    const additionalFees = additionalFeeBreakdown.additionalFees;
+    const additionalFeesTotal = additionalFeeBreakdown.additionalFeesTotal;
 
     let updatedRecord: StudentPaymentRecord;
 
@@ -1220,20 +1228,20 @@ export default function App() {
       } else if (existingStudent.lesson_fee === 0 && Number(existingStudent.lesson_paid || 0) === 0) {
         lessonFee = 0;
       }
-      const lessonPaid = Number(existingStudent.lesson_paid || 0);
+      const lessonPaid = parseFinancialAmount(existingStudent.lesson_paid, 0);
       if (isLessonDisabled(existingStudent)) lessonFee = 0;
       lessonFee = Math.max(lessonFee, lessonPaid);
 
-      const examPaid = Number(existingStudent.exam_paid || 0);
+      const examPaid = parseFinancialAmount(existingStudent.exam_paid, 0);
       const examFee = Math.max(classSchedule.examFee, examPaid);
 
-      const admissionPaid = Number(existingStudent.admission_paid || 0);
+      const admissionPaid = parseFinancialAmount(existingStudent.admission_paid, 0);
       const admissionFee = existingStudent.is_new_admission
         ? classSchedule.admissionFee
-        : Math.max(Number(existingStudent.admission_fee || 0), admissionPaid);
+        : Math.max(parseFinancialAmount(existingStudent.admission_fee, 0), admissionPaid);
 
-      const totalFee = tuitionFee + admissionFee + lessonFee + examFee;
-      const amountPaid = Number(existingStudent.amount_paid || 0);
+      const totalFee = roundMoney(tuitionFee + admissionFee + lessonFee + examFee + additionalFeesTotal);
+      const amountPaid = parseFinancialAmount(existingStudent.amount_paid, 0);
       const balance = calculateBalance(totalFee, amountPaid);
       const status = calculateStatus(totalFee, amountPaid);
 
@@ -1243,12 +1251,13 @@ export default function App() {
         class: targetClass,
         term: scholarshipData.term || existingStudent.term,
         session: scholarshipData.session || existingStudent.session,
-        is_exempt_from_school_fee: tuitionFee === 0,
+        is_exempt_from_school_fee: isExempt || pct >= 100,
         scholarship_notes: scholarshipData.scholarshipNotes,
         tuition_fee: tuitionFee,
         lesson_fee: lessonFee,
         exam_fee: examFee,
         admission_fee: admissionFee,
+        additional_fees: additionalFees,
         fee_amount: totalFee,
         amount_paid: amountPaid,
         balance,
@@ -1265,7 +1274,7 @@ export default function App() {
       const lessonFee = classSchedule.lessonFeeTermly;
       const examFee = classSchedule.examFee;
       const admissionFee = 0;
-      const totalFee = tuitionFee + admissionFee + lessonFee + examFee;
+      const totalFee = roundMoney(tuitionFee + admissionFee + lessonFee + examFee + additionalFeesTotal);
       const balance = calculateBalance(totalFee, 0);
       const status = calculateStatus(totalFee, 0);
 
@@ -1280,7 +1289,7 @@ export default function App() {
         balance,
         status,
         payment_date: getTodayDateString(),
-        is_exempt_from_school_fee: tuitionFee === 0,
+        is_exempt_from_school_fee: isExempt || pct >= 100,
         scholarship_notes: scholarshipData.scholarshipNotes,
         tuition_fee: tuitionFee,
         tuition_paid: 0,
@@ -1290,6 +1299,7 @@ export default function App() {
         lesson_paid: 0,
         exam_fee: examFee,
         exam_paid: 0,
+        additional_fees: additionalFees,
         total_remitted: 0,
       };
 
@@ -1304,12 +1314,12 @@ export default function App() {
     const scholarshipRecordToStore: ScholarshipRecord = {
       id: scholarshipData.studentId,
       student_name: scholarshipData.fullName,
-      class: scholarshipData.studentClass,
-      term: scholarshipData.term,
-      session: scholarshipData.session,
+      class: targetClass,
+      term: updatedRecord.term,
+      session: updatedRecord.session,
       scholarship_type: scholarshipData.scholarshipType,
-      scholarship_percentage: scholarshipData.scholarshipPercentage,
-      exempt_school_fee: scholarshipData.exemptSchoolFee,
+      scholarship_percentage: pct,
+      exempt_school_fee: isExempt || pct >= 100,
       scholarship_notes: scholarshipData.scholarshipNotes,
       award_date: scholarshipData.awardDate,
       awarded_by: scholarshipData.awardedBy,
@@ -1545,18 +1555,20 @@ export default function App() {
     const typedReceipt = options?.receiptNumber?.trim() || '';
     const totalAmount = lines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
 
-    // A typed receipt number must not belong to a different student.
+    // A typed receipt number must be unique across both the current student's history and the roster.
     if (typedReceipt) {
       const wanted = typedReceipt.toLowerCase();
-      const clash = students.find((s) => {
-        if (s.id === student.id) return false;
-        if ((s.receipt_no || '').trim().toLowerCase() === wanted) return true;
-        return Array.isArray(s.payment_history) &&
-          s.payment_history.some((h) => (h.receiptNumber || '').trim().toLowerCase() === wanted);
-      });
+      const clash = students.find((s) =>
+        (s.receipt_no || '').trim().toLowerCase() === wanted ||
+        (Array.isArray(s.payment_history) &&
+          s.payment_history.some((h) => (h.receiptNumber || '').trim().toLowerCase() === wanted))
+      );
       if (clash) {
+        const usedBy = clash.id === student.id
+          ? `an earlier payment for ${clash.full_name}`
+          : `${clash.full_name} (${clash.class})`;
         throw new Error(
-          `Receipt No. ${typedReceipt} is already used for ${clash.full_name} (${clash.class}). Enter a different receipt number.`
+          `Receipt No. ${typedReceipt} is already used for ${usedBy}. Enter a different receipt number.`
         );
       }
     }

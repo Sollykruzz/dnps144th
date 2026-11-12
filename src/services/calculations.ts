@@ -247,6 +247,34 @@ export function roundMoney(value: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+export function calculateScholarshipTuition(
+  baseTuition: number | string,
+  scholarshipPercentage: number | string,
+  exemptSchoolFee = false
+): {
+  baseTuition: number;
+  scholarshipPercentage: number;
+  waivedPercentage: number;
+  waivedAmount: number;
+  tuitionFee: number;
+} {
+  const base = roundMoney(parseFinancialAmount(baseTuition, 0));
+  const rawPercentage = Number(scholarshipPercentage);
+  const percentage = Number.isFinite(rawPercentage)
+    ? Math.min(100, Math.max(0, rawPercentage))
+    : 100;
+  const waivedPercentage = exemptSchoolFee ? 100 : percentage;
+  const waivedAmount = roundMoney((base * waivedPercentage) / 100);
+
+  return {
+    baseTuition: base,
+    scholarshipPercentage: percentage,
+    waivedPercentage,
+    waivedAmount,
+    tuitionFee: Math.max(0, roundMoney(base - waivedAmount)),
+  };
+}
+
 /**
  * True when the student has been opted out of after-school lessons.
  * The opt-out is ignored once any lesson money is on record, so a recorded payment can never
@@ -748,23 +776,12 @@ export function deriveFeeBreakdown(
     }
   }
 
-  const tuitionStatus: PaymentStatus = isExempt && finalTuitionPaid === 0
-    ? 'fully_paid'
-    : (tuitionFee > 0 ? calculateStatus(tuitionFee, finalTuitionPaid) : (finalTuitionPaid > 0 ? 'fully_paid' : 'unpaid'));
-
-  const admissionStatus: PaymentStatus = admissionFee > 0
-    ? calculateStatus(admissionFee, finalAdmissionPaid)
-    : (finalAdmissionPaid > 0 ? 'fully_paid' : 'unpaid');
-
-  const examStatus: PaymentStatus = examFee > 0
-    ? calculateStatus(examFee, finalExamPaid)
-    : (finalExamPaid > 0 ? 'fully_paid' : 'unpaid');
-
+  const tuitionStatus: PaymentStatus = calculateStatus(tuitionFee, finalTuitionPaid);
+  const admissionStatus: PaymentStatus = calculateStatus(admissionFee, finalAdmissionPaid);
+  const examStatus: PaymentStatus = calculateStatus(examFee, finalExamPaid);
   const lessonStatus: PaymentStatus = lessonDisabled
     ? 'fully_paid'
-    : lessonFee > 0
-    ? calculateStatus(lessonFee, finalLessonPaid)
-    : (finalLessonPaid > 0 ? 'fully_paid' : 'unpaid');
+    : calculateStatus(lessonFee, finalLessonPaid);
 
   return {
     tuitionFee,
@@ -877,11 +894,11 @@ export function calculateStatus(feeAmount: number | string, amountPaid: number |
   const fee = parseFinancialAmount(feeAmount, 0);
   const paid = parseFinancialAmount(amountPaid, 0);
 
-  if (paid <= 0) {
-    return 'unpaid';
-  }
   if (fee === 0 || paid >= fee) {
     return 'fully_paid';
+  }
+  if (paid <= 0) {
+    return 'unpaid';
   }
   return 'part_payment';
 }
