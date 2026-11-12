@@ -17,7 +17,6 @@ interface BottomNavProps {
 }
 
 const secondaryTabs: { id: TabType; label: string; icon: typeof UserPlus }[] = [
-  { id: 'admission', label: 'Admission', icon: UserPlus },
   { id: 'payroll', label: 'Payroll', icon: WalletCards },
   { id: 'analytics', label: 'Analytics', icon: TrendingUp },
 ];

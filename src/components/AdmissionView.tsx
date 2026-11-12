@@ -37,6 +37,7 @@ interface AdmissionViewProps {
   existingCount: number;
   students?: StudentPaymentRecord[];
   onAddStudent: (student: StudentPaymentRecord) => Promise<void> | void;
+  onBack?: () => void;
   onViewStudent?: (student: StudentPaymentRecord) => void;
   activeSchool?: import('../types').SchoolProfile;
 }
@@ -66,6 +67,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
   existingCount,
   students,
   onAddStudent,
+  onBack,
   onViewStudent,
   activeSchool,
 }) => {
@@ -211,7 +213,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
     setFullName('');
     setStudentClass(classOptions[0] || 'Primary 1');
     setTerm('First Term');
-    setSession('2025-2026');
+    setSession(activeSchool?.academicSession || getCurrentAcademicSession());
     setAdmissionFee(String(currentFeeSchedule.admissionFee));
     setAdmissionPaid(String(currentFeeSchedule.admissionFee));
     setExamFee(String(currentFeeSchedule.examFee));
@@ -367,13 +369,19 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
   if (enrolledStudent) {
     return (
       <div className="flex-1 px-4 py-5 space-y-4 pb-28">
+        {onBack && (
+          <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500">
+            <ArrowRight className="size-4 rotate-180" aria-hidden="true" />
+            Back to enrollment options
+          </button>
+        )}
         <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 text-center space-y-4 shadow-sm">
           <div className="w-14 h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-600/20">
             <CheckCircle2 className="w-7 h-7" />
           </div>
           <div>
             <span className="text-[10px] font-black tracking-wider uppercase text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Admission Successful
+              Enrollment successful
             </span>
             <h2 className="text-xl font-black text-emerald-950 mt-1.5">
               {enrolledStudent.full_name}
@@ -446,6 +454,12 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
 
   return (
     <div className="flex-1 px-4 py-4 space-y-4 pb-28 bg-slate-50/50">
+      {onBack && (
+        <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500">
+          <ArrowRight className="size-4 rotate-180" aria-hidden="true" />
+          Back to enrollment options
+        </button>
+      )}
       {/* Header Banner */}
       <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center gap-3">
@@ -459,7 +473,7 @@ export const AdmissionView: React.FC<AdmissionViewProps> = ({
               </span>
             </div>
             <h2 className="text-lg font-black tracking-tight text-white mt-0.5">
-              New Student Admission
+              New student admission
             </h2>
             <p className="text-xs text-blue-200/90 leading-tight">
               Enrol new admission with admission fee column, mandatory exam, and school fees.

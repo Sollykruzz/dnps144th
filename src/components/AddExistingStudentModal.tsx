@@ -21,6 +21,7 @@ import {
   calculateStatus, 
   getTodayDateString,
   getClassFeeSchedule,
+  generateStudentId,
   FEE_SCHEDULE,
   getCurrentAcademicSession
 } from '../services/calculations';
@@ -286,8 +287,8 @@ export const AddExistingStudentModal: React.FC<AddExistingStudentModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md max-h-[90dvh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-xs sm:items-center sm:p-4">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-2xl animate-in slide-in-from-bottom duration-200 sm:rounded-3xl">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2.5">
@@ -296,7 +297,7 @@ export const AddExistingStudentModal: React.FC<AddExistingStudentModalProps> = (
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                Add Existing Student
+                Enroll Existing Student
               </h3>
               <p className="text-[11px] text-slate-500">
                 Enroll student into {activeSchool?.name || 'Class Roster'}
@@ -325,11 +326,17 @@ export const AddExistingStudentModal: React.FC<AddExistingStudentModalProps> = (
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div className="sm:col-span-1">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold text-slate-700 uppercase block">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="block text-[10px] font-bold uppercase text-slate-700" htmlFor="existing-student-id">
                     Student ID *
                   </label>
-                  <span className="text-[9px] text-slate-500 font-semibold">Fill Manually</span>
+                  <button
+                    type="button"
+                    onClick={() => setStudentId(generateStudentId(students || existingCount, studentClass))}
+                    className="min-h-8 shrink-0 rounded-lg px-2 text-[10px] font-bold text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                  >
+                    Assign ID
+                  </button>
                 </div>
                 <input
                   type="text"
@@ -337,7 +344,7 @@ export const AddExistingStudentModal: React.FC<AddExistingStudentModalProps> = (
                   id="existing-student-id"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="Enter ID manually (e.g. DNPS/0171)"
+                  placeholder="Enter or assign a student ID"
                   className="w-full px-3 py-2.5 text-xs font-mono font-bold bg-slate-50 rounded-xl border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none transition-all"
                 />
               </div>
@@ -697,7 +704,7 @@ export const AddExistingStudentModal: React.FC<AddExistingStudentModalProps> = (
               ) : (
                 <>
                   <UserCheck className="w-4 h-4" />
-                  <span>Add Existing Student</span>
+                  <span>Enroll Existing Student</span>
                 </>
               )}
             </button>

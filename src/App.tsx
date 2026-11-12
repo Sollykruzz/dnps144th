@@ -80,6 +80,7 @@ import { BackupRolloverModal } from './components/BackupRolloverModal';
 import { EndTermModal } from './components/EndTermModal';
 import { StudentDetailsModal } from './components/StudentDetailsModal';
 import { AddExistingStudentModal } from './components/AddExistingStudentModal';
+import { EnrollmentTypeModal } from './components/EnrollmentTypeModal';
 import { ScholarshipModal } from './components/ScholarshipModal';
 const AdmissionView = React.lazy(() => import('./components/AdmissionView').then((module) => ({ default: module.AdmissionView })));
 import { SettingsModal } from './components/SettingsModal';
@@ -440,7 +441,11 @@ export default function App() {
   const [studentForPayment, setStudentForPayment] = useState<StudentPaymentRecord | null>(null);
   const [studentToGrantScholarship, setStudentToGrantScholarship] = useState<StudentPaymentRecord | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [isAddStudentOpen, setIsAddStudentOpen] = useState<boolean>(false);
+  const [enrollmentStep, setEnrollmentStep] = useState<'choose' | 'new' | 'existing' | null>(null);
+  const openEnrollmentChooser = () => {
+    setActiveTab('students');
+    setEnrollmentStep('choose');
+  };
   const [isScholarshipModalOpen, setIsScholarshipModalOpen] = useState<boolean>(false);
   const [isRolloverModalOpen, setIsRolloverModalOpen] = useState<boolean>(false);
   const [isEndTermOpen, setIsEndTermOpen] = useState<boolean>(false);
@@ -1785,7 +1790,7 @@ export default function App() {
           isLoading={isLoading}
           onRefresh={() => loadStudents(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenAddStudent={() => setIsAddStudentOpen(true)}
+          onOpenAddStudent={openEnrollmentChooser}
           onOpenSheetUpload={() => setIsSheetUploadOpen(true)}
           onLogout={handleLogout}
           studentCount={students.length}
@@ -1898,7 +1903,7 @@ export default function App() {
               </div>
             }
           >
-          {activeTab === 'students' && (
+          {activeTab === 'students' && enrollmentStep !== 'new' && (
             <StudentList
               students={students}
               isLoading={isLoading}
@@ -1908,7 +1913,7 @@ export default function App() {
               activeSchool={activeSchool}
               onRefresh={() => loadStudents(true)}
               onSelectStudent={(stu) => setSelectedStudentForDetails(stu)}
-              onOpenAddStudent={() => setIsAddStudentOpen(true)}
+              onOpenAddStudent={openEnrollmentChooser}
               onOpenScholarships={() => setIsScholarshipModalOpen(true)}
               onOpenSheetUpload={() => setIsSheetUploadOpen(true)}
               onOpenBackup={() => setIsRolloverModalOpen(true)}
@@ -1931,19 +1936,21 @@ export default function App() {
                 setSelectedStudentForDetails(stu);
                 setActiveTab('students');
               }}
-              onOpenAddStudent={() => setIsAddStudentOpen(true)}
+              onOpenAddStudent={openEnrollmentChooser}
               onOpenAdditionalFees={() => setIsAdditionalFeesOpen(true)}
               activeSchool={activeSchool}
             />
           )}
 
-          {activeTab === 'admission' && (
+          {activeTab === 'students' && enrollmentStep === 'new' && (
             <AdmissionView
               currencySymbol={session.currencySymbol}
               existingCount={students.length}
               students={students}
               onAddStudent={handleAddStudent}
+              onBack={() => setEnrollmentStep('choose')}
               onViewStudent={(stu) => {
+                setEnrollmentStep(null);
                 setSelectedStudentForDetails(stu);
                 setActiveTab('students');
               }}
@@ -1992,6 +1999,7 @@ export default function App() {
         <BottomNav
           activeTab={activeTab}
           onTabChange={(tab) => {
+            setEnrollmentStep(null);
             setSelectedStudentForDetails(null);
             setActiveTab(tab);
             if (tab === 'students') {
@@ -2022,10 +2030,16 @@ export default function App() {
           onOpenAdditionalFees={() => setIsAdditionalFeesOpen(true)}
         />
 
-        {/* Add Existing Student Modal */}
+        <EnrollmentTypeModal
+          isOpen={enrollmentStep === 'choose'}
+          onClose={() => setEnrollmentStep(null)}
+          onChoose={setEnrollmentStep}
+        />
+
+        {/* Existing-student enrollment */}
         <AddExistingStudentModal
-          isOpen={isAddStudentOpen}
-          onClose={() => setIsAddStudentOpen(false)}
+          isOpen={enrollmentStep === 'existing'}
+          onClose={() => setEnrollmentStep(null)}
           currencySymbol={session.currencySymbol}
           existingCount={students.length}
           students={students}
