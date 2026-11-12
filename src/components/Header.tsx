@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               >
                 <UserCheck className="size-4" aria-hidden="true" />
-                Add student
+                Enroll student
               </button>
 
               <button

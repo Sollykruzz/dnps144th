@@ -5,7 +5,7 @@
 
 export type PaymentStatus = 'unpaid' | 'part_payment' | 'fully_paid';
 
-export type TabType = 'students' | 'record_payment' | 'admission' | 'payroll' | 'analytics' | 'collection';
+export type TabType = 'students' | 'record_payment' | 'payroll' | 'analytics' | 'collection';
 
 export type RemittanceApprovalStatus = 'pending' | 'approved' | 'rejected' | 'voided';
 

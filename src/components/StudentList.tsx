@@ -927,7 +927,7 @@ export const StudentList: React.FC<StudentListProps> = ({
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1a1a1a] text-white text-xs font-semibold hover:bg-black active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Add Existing Student</span>
+              <span>Enroll student</span>
             </button>
           </div>
         </div>
