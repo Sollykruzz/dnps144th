@@ -37,6 +37,7 @@ function getMonthlyCollections(group: SchoolPerformanceGroup) {
     };
   });
   const monthlyTotals = new Map(months.map((month) => [month.key, 0]));
+  const includedCategories = new Set(['school_fee', 'exam']);
 
   group.students.forEach((student) => {
     (student.payment_history || []).forEach((receipt) => {
@@ -46,7 +47,17 @@ function getMonthlyCollections(group: SchoolPerformanceGroup) {
       if (Number.isNaN(date.getTime())) return;
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       if (!monthlyTotals.has(key)) return;
-      monthlyTotals.set(key, (monthlyTotals.get(key) || 0) + Math.max(0, Number(receipt.amountPaidNow) || 0));
+
+      const coreAmount = receipt.items?.length
+        ? receipt.items.reduce((sum, item) => {
+            const category = item.feeCategory || receipt.feeCategory;
+            return includedCategories.has(category || '') ? sum + Math.max(0, Number(item.amount) || 0) : sum;
+          }, 0)
+        : includedCategories.has(receipt.feeCategory || '')
+          ? Math.max(0, Number(receipt.amountPaidNow) || 0)
+          : 0;
+
+      monthlyTotals.set(key, (monthlyTotals.get(key) || 0) + coreAmount);
     });
   });
 
@@ -102,7 +113,7 @@ const SchoolPaymentsDashboard = ({ schools, studentsBySchool }: SchoolPaymentsDa
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Payments overview</p>
             <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">School performance</h1>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600 sm:text-sm">
-              Compare collections, outstanding balances, and class progress across primary and secondary school.
+              Compare school and exam fee collections across primary and secondary school. Lesson and other fees are excluded from these totals.
             </p>
           </div>
           <div className={`hidden size-12 place-items-center rounded-2xl sm:grid ${primarySelected ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
