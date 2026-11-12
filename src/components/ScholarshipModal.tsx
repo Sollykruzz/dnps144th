@@ -31,8 +31,10 @@ import {
   generateNextStudentId,
   calculateBalance,
   calculateStatus,
+  calculateScholarshipTuition,
   getClassFeeSchedule,
   parseFinancialAmount,
+  roundMoney,
   deriveFeeBreakdown,
   getCurrentAcademicSession,
 } from '../services/calculations';
@@ -275,19 +277,18 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
       );
 
       const studentClass = sch.class || rosterMatch?.class || 'Primary 1';
+      const scholarshipTerm = sch.term || rosterMatch?.term || selectedTerm;
       const classSched = getClassFeeSchedule(activeSchool, studentClass);
-
-      const pct = Number(sch.scholarship_percentage !== undefined ? sch.scholarship_percentage : 100) || 100;
-      const isExempt = sch.exempt_school_fee !== false;
-
-      // Base standard tuition configured for this class in settings
-      const baseTuition = classSched.tuitionFee;
-      let tuitionFee = 0;
-      if (isExempt || pct >= 100) {
-        tuitionFee = 0;
-      } else if (pct > 0 && pct < 100) {
-        tuitionFee = Math.round(baseTuition * (1 - pct / 100));
-      }
+      const hasScholarshipPercentage = sch.scholarship_percentage !== undefined && sch.scholarship_percentage !== null;
+      const isExempt = sch.exempt_school_fee === true || (!hasScholarshipPercentage && sch.exempt_school_fee !== false);
+      const tuitionCalculation = calculateScholarshipTuition(
+        classSched.tuitionFee,
+        sch.scholarship_percentage ?? 100,
+        isExempt
+      );
+      const pct = tuitionCalculation.scholarshipPercentage;
+      const isFullExemption = isExempt || pct >= 100;
+      const tuitionFee = tuitionCalculation.tuitionFee;
 
       // Lesson fee from class schedule
       let lessonFee = classSched.lessonFeeTermly;
@@ -298,37 +299,54 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
       } else if (rosterMatch && rosterMatch.lesson_fee === 0 && Number(rosterMatch.lesson_paid || 0) === 0) {
         lessonFee = 0;
       }
-      const lessonPaid = rosterMatch ? Number(rosterMatch.lesson_paid || 0) : Number(sch.lesson_paid || 0);
+      const lessonPaid = parseFinancialAmount(rosterMatch?.lesson_paid ?? sch.lesson_paid, 0);
       lessonFee = Math.max(lessonFee, lessonPaid);
 
       // Exam fee from class schedule
-      const examPaid = rosterMatch ? Number(rosterMatch.exam_paid || 0) : Number(sch.exam_paid || 0);
+      const examPaid = parseFinancialAmount(rosterMatch?.exam_paid ?? sch.exam_paid, 0);
       const examFee = Math.max(classSched.examFee, examPaid);
 
       // Admission fee
-      const admissionPaid = rosterMatch ? Number(rosterMatch.admission_paid || 0) : Number(sch.admission_paid || 0);
+      const admissionPaid = parseFinancialAmount(rosterMatch?.admission_paid ?? sch.admission_paid, 0);
       const admissionFee = rosterMatch?.is_new_admission
         ? classSched.admissionFee
-        : Math.max(Number(rosterMatch?.admission_fee ?? sch.admission_fee ?? 0), admissionPaid);
+        : Math.max(parseFinancialAmount(rosterMatch?.admission_fee ?? sch.admission_fee, 0), admissionPaid);
 
-      const totalFee = tuitionFee + admissionFee + lessonFee + examFee;
-      const amountPaid = rosterMatch?.amount_paid ?? sch.amount_paid ?? 0;
+      const additionalFeeBreakdown = deriveFeeBreakdown(
+        {
+          ...(rosterMatch ?? {}),
+          id: sch.id,
+          class: studentClass,
+          term: scholarshipTerm,
+          additional_fees: rosterMatch?.additional_fees || [],
+        },
+        activeSchool,
+        { forceScheduleRates: true }
+      );
+      const additionalFees = additionalFeeBreakdown.additionalFees;
+      const totalFee = roundMoney(
+        tuitionFee + admissionFee + lessonFee + examFee + additionalFeeBreakdown.additionalFeesTotal
+      );
+      const amountPaid = parseFinancialAmount(rosterMatch?.amount_paid ?? sch.amount_paid, 0);
 
       const studentRecord: StudentPaymentRecord = {
         id: sch.id,
         full_name: sch.full_name || sch.student_name || rosterMatch?.full_name || 'Scholarship Beneficiary',
         class: studentClass,
-        term: sch.term || rosterMatch?.term || selectedTerm,
+        term: scholarshipTerm,
         session: sch.session || rosterMatch?.session || selectedSession,
         fee_amount: totalFee,
         amount_paid: amountPaid,
         balance: calculateBalance(totalFee, amountPaid),
         status: calculateStatus(totalFee, amountPaid),
         payment_date: sch.payment_date || sch.award_date || rosterMatch?.payment_date || '',
-        is_exempt_from_school_fee: tuitionFee === 0,
-        scholarship_notes: sch.scholarship_notes || sch.scholarship_type || 'Full Tuition Exemption',
+        is_exempt_from_school_fee: isFullExemption,
+        scholarship_notes:
+          sch.scholarship_notes ||
+          sch.scholarship_type ||
+          (isFullExemption ? 'Full Tuition Exemption' : `${pct}% Tuition Scholarship`),
         tuition_fee: tuitionFee,
-        tuition_paid: rosterMatch?.tuition_paid ?? sch.tuition_paid ?? 0,
+        tuition_paid: parseFinancialAmount(rosterMatch?.tuition_paid ?? sch.tuition_paid, 0),
         admission_fee: admissionFee,
         admission_paid: admissionPaid,
         lesson_fee: lessonFee,
@@ -336,6 +354,7 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
         lesson_months: rosterMatch?.lesson_months ?? sch.lesson_months,
         exam_fee: examFee,
         exam_paid: examPaid,
+        additional_fees: additionalFees,
         receipt_no: rosterMatch?.receipt_no ?? sch.receipt_no,
       };
 
@@ -383,11 +402,12 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
   const totalWaivedValue = useMemo(() => {
     return unifiedBeneficiaries.reduce((sum, b) => {
       const classSched = getClassFeeSchedule(activeSchool, b.student.class);
-      const pct = Number(b.scholarshipDetails?.scholarship_percentage ?? 100);
-      const waivedAmount = b.student.is_exempt_from_school_fee || pct >= 100
-        ? classSched.tuitionFee
-        : Math.round(classSched.tuitionFee * (pct / 100));
-      return sum + waivedAmount;
+      const calculation = calculateScholarshipTuition(
+        classSched.tuitionFee,
+        b.scholarshipDetails?.scholarship_percentage ?? 100,
+        b.scholarshipDetails?.exempt_school_fee ?? b.student.is_exempt_from_school_fee
+      );
+      return sum + calculation.waivedAmount;
     }, 0);
   }, [unifiedBeneficiaries, activeSchool]);
 
@@ -423,17 +443,26 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
   // Live calculation of fees with scholarship applied (always reflects Settings updates immediately)
   const formBreakdownPreview = useMemo(() => {
     const studentToEval: Partial<StudentPaymentRecord> = selectedExistingStudentRecord
-      ? { ...selectedExistingStudentRecord, class: formClass }
-      : { class: formClass, is_new_admission: false };
+      ? { ...selectedExistingStudentRecord, class: formClass, term: formTerm }
+      : { class: formClass, term: formTerm, is_new_admission: false };
 
     const bd = deriveFeeBreakdown(studentToEval, activeSchool, { forceScheduleRates: true });
     const standardTuition = bd.tuitionFee;
-    const waivedPct = formExemptSchoolFee ? 100 : Math.min(100, Math.max(0, formPercentage || 0));
-    const waivedTuitionAmount = Math.round(standardTuition * (waivedPct / 100));
-    const netTuitionPayable = standardTuition - waivedTuitionAmount;
+    const tuitionCalculation = calculateScholarshipTuition(
+      standardTuition,
+      formPercentage,
+      formExemptSchoolFee
+    );
+    const waivedPct = tuitionCalculation.waivedPercentage;
+    const waivedTuitionAmount = tuitionCalculation.waivedAmount;
+    const netTuitionPayable = tuitionCalculation.tuitionFee;
 
-    const netTotalFee = netTuitionPayable + bd.admissionFee + bd.lessonFee + bd.examFee + bd.additionalFeesTotal;
-    const amountPaid = selectedExistingStudentRecord ? Number(selectedExistingStudentRecord.amount_paid || 0) : 0;
+    const netTotalFee = roundMoney(
+      netTuitionPayable + bd.admissionFee + bd.lessonFee + bd.examFee + bd.additionalFeesTotal
+    );
+    const amountPaid = selectedExistingStudentRecord
+      ? parseFinancialAmount(selectedExistingStudentRecord.amount_paid, 0)
+      : 0;
     const netBalance = calculateBalance(netTotalFee, amountPaid);
     const netStatus = calculateStatus(netTotalFee, amountPaid);
 
@@ -468,8 +497,9 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
         term: student.term,
         session: student.session,
         scholarship_type: scholarshipDetails?.scholarship_type || student.scholarship_notes || 'Full Tuition Exemption',
-        scholarship_percentage: scholarshipDetails?.scholarship_percentage || 100,
-        exempt_school_fee: true,
+        scholarship_percentage:
+          scholarshipDetails?.scholarship_percentage ?? (student.is_exempt_from_school_fee ? 100 : 0),
+        exempt_school_fee: scholarshipDetails?.exempt_school_fee ?? student.is_exempt_from_school_fee,
         scholarship_notes: scholarshipDetails?.scholarship_notes || student.scholarship_notes || 'Full Tuition Exemption',
         award_date: scholarshipDetails?.award_date || student.payment_date || getTodayDateString(),
         awarded_by: scholarshipDetails?.awarded_by || 'School Management',
@@ -479,7 +509,7 @@ export const ScholarshipModal: React.FC<ScholarshipModalProps> = ({
         amount_paid: student.amount_paid,
         balance: student.balance,
         payment_status: student.status,
-        tuition_fee: 0,
+        tuition_fee: student.tuition_fee ?? 0,
         tuition_paid: student.tuition_paid,
         admission_fee: student.admission_fee,
         admission_paid: student.admission_paid,
